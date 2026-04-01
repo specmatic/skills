@@ -42,28 +42,6 @@ Run the loop test with one of:
 pwsh ./.codex/skills/fix-openapi-spec/scripts/run_loop_test.ps1 path/to/spec-updated.yaml
 ```
 
-The script:
-
-- runs Specmatic in Docker instead of relying on a host-installed `specmatic` binary
-- uses `--network host` for both mock and test runs so both containers communicate with the same host network stack
-- uses Docker options that work across Linux, macOS, and Windows (network mode + bind mount)
-- passes `--lenient` to all Specmatic Docker command invocations
-- bind-mounts the spec directory into `/usr/src/app` inside the container
-- waits for `http://localhost:9000/_specmatic/health` to return `200` within 10 seconds
-- runs the test step with `MAX_TEST_REQUEST_COMBINATIONS=1` by default
-- exits `0` only when the mock came up and the test command passed
-- reports a clear error if Docker is not installed or Docker Desktop / the Docker daemon is unavailable
-- explicitly stops the mock container after the loop test concludes and uses trap-based cleanup as a fallback
-
-## Manual Fallback
-
-If the helper script fails for workflow or environment reasons rather than because of the spec itself, run the loop manually with Docker:
-
-1. Start the mock with `docker run --rm --network host -v "<spec-dir>:/usr/src/app" -w /usr/src/app specmatic/specmatic:latest mock "<spec-file>" --lenient`
-2. Wait for `http://localhost:9000/_specmatic/health` to return `200`
-3. Run the bounded loop test with `docker run --rm --network host -e MAX_TEST_REQUEST_COMBINATIONS=1 -v "<spec-dir>:/usr/src/app" -w /usr/src/app specmatic/specmatic:latest test "<spec-file>" --lenient`
-4. Explicitly stop the mock container after the test step and inspect the captured output
-
 ## Working Rules
 
 - Always edit the `-updated` copy, not the original spec.
