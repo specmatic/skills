@@ -114,9 +114,9 @@ docker_run_specmatic() {
     -w /usr/src/app \
     "$@" \
     "${SPECMATIC_DOCKER_IMAGE}" \
-    --lenient \
     "${command}" \
-    "${SPEC_BASENAME}"
+    "${SPEC_BASENAME}" \
+    --lenient
 }
 
 http_status_code() {
@@ -161,8 +161,8 @@ docker run \
   -v "${SPEC_DIR}:/usr/src/app" \
   -w /usr/src/app \
   "${SPECMATIC_DOCKER_IMAGE}" \
-  --lenient \
   mock \
+  --lenient \
   "${SPEC_BASENAME}" >"${MOCK_LOG}" 2>&1 &
 MOCK_PID=$!
 

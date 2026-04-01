@@ -18,15 +18,17 @@ Use this skill when the task is to diagnose an OpenAPI spec that are preventing 
 2. Create a copy for edits named `<spec-file>-updated.<ext>` in the same directory as the source spec.
 3. Create an append-only attempt log file named `<spec>_attempts.log.md` in the spec directory (`<spec>` means the spec filename without extension).
 4. Run the loop test script against the editable copy and capture output.
-5. Append a structured entry to `<spec>_attempts.log.md` for every loop-test run and fix attempt, including: what was attempted, why it was attempted, and whether it fixed the issue.
-6. If the loop test passes, stop. There appears to be no obvious issue in the spec.
-7. If the loop test fails, classify each reported error into one of the following:
+5. If the loop test passes, stop. There appears to be no obvious issue in the spec.
+6. If the loop test fails, classify each reported error into one of the following:
    - `clear-actionable`: error message is clear, articulates a concrete spec problem, and preferably pinpoints where to fix.
    - `ambiguous`: error message is unclear, not sufficiently actionable, or appears clear but still causes loop-test halt after obvious fixes.
+7. Append a structured entry to `<spec>_attempts.log.md` for every loop-test run and fix attempt, as soon as the fix attempt is made. Include: what was attempted, why it was attempted, and whether it fixed the issue.
 8. Do not spend iteration cycles fixing `clear-actionable` errors inside this skill run. List them out clearly for the user instead.
 9. Focus fix attempts only on `ambiguous` errors, apply lawful fixes, rerun the loop test, and repeat until it passes or no lawful ambiguous-error fix remains.
 10. If there are no lawful changes or workarounds left to suggest for ambiguous errors, ask the user to report the issue to the Specmatic team and stop.
 11. Treat warnings that still allow mock startup and loop test pass as non-blocking unless the user asked for broader cleanup.
+12. After you have stopped (either because the loop test passed or because no lawful fix remains), if any issues were added to `raw-specmatic-issues-<current-date>.md`, create a new file named `specmatic-issues-<current-date>.md` that includes the de-duplicated issue reports. If there are multiple raw issues for the same problem, combine them into one issue in the user-friendly report and remove redundant information. But make sure that each issue in the new issues file contains the raw log snippets from the raw file.
+13. Ask the user to review the file and send it to the Specmatic team.
 
 ## Commands
 
@@ -79,17 +81,20 @@ If the helper script fails for workflow or environment reasons rather than becau
 - Any blocking error that still halts the loop test after seemingly unambiguous remediation must be reclassified as `ambiguous`.
 - If the mock never becomes healthy within 10 seconds, treat that as a spec or startup failure and inspect the captured logs before changing the spec.
 - Fix only blocking `ambiguous` failures first. Do not broaden the task into warning cleanup unless the user asked for it.
+- As soon as a Specmatic bug is identified, log the bug report in `raw-errors-specmatic-<current-date>.md`.
 
-## Lawful Changes
+## Tips and Tricks
 
 - The following changes are not lawful and should not be suggested:
   - You cannot widen a JSON schema from `additionalProperties: false` to `additionalProperties: true`.
   - You cannot drop a property from a JSON schema completely. At most you may make properties optional or mandatory.
   - Descriptions, titles, summaries, and other metadata are never parsed by Specmatic. They should not be changed.
 
-- Fixing regexes
-  - If any error says that a value does not match its regex, fix the regex, not the value. However if the regex is valid, it's a bug in Specmatic and should be reported.
-  - If the regex fix doesn't work, feel free to update the regex, or remove it to make it work. However if the initial regex was valid, create a bug report for the Specmatic team.
+- If any error says that a value does not match its regex, but the original regex appears valid, this is likely a Specmatic bug. Report the issue and ask the user to report it to the Specmatic team, but also try the following fixes in order:
+  - First fix the regex, not the value, and re-attempt the loop test.
+  - If the fix doesn't work, but based on the field name and schema context you can make an educated guess about how to update the regex, you may do so, and re-attempt the loop test.
+  - If you can't find a way to provide a valid regex, remove it and re-attempt the loop test.
+  - Note: Specmatic uses the dk.brics.automaton.Regexp library to generate regexes.
 
 - When you find constraints to be contradictory (e.g. a string with `maxLength: 10` and `minLength: 20`), inform the user about the issue, offer to fix the spec, and provide options.
 
@@ -97,16 +102,14 @@ If the helper script fails for workflow or environment reasons rather than becau
 
 ## Specmatic Bugs
 
-- If the error message is not clear enough to identify the issue, or if the spec seems correct but a spec change was still required for the loop test to pass, create a bug report for the Specmatic team.
+- If the error message is not clear enough to identify the issue, or if the spec seems correct, but a spec change was still required for the count of "Successes" in the loop test report at the end to increase, create a bug report for the Specmatic team.
 - Include all of the following in the bug report:
   - Error: the unclear or insufficient error message
   - Change: the change that had to be made to the spec in order for the loop test to pass
-  - Sample spec: a simplistic sample spec that reproduces the issue
-  - Logs: any relevant log snippet
+  - Logs: the relevant log snippet - include the raw log content
   - Details: any other relevant details that can help the Specmatic team identify and fix the issue
-- Show the user the bug report and ask the user to report it to the Specmatic team.
-- As each such Specmatic issue report is produced, append it to a file named `errors-specmatic-<current-date>.md` in the current working directory. Create the file if it does not exist.
+- As each such Specmatic issue report is produced, append it to a file named `raw-specmatic-issues-<current-date>.md` in the current working directory. Create the file if it does not exist.
 
-- When you stop working on the spec, if any issues were added to `errors-specmatic-<current-date>.md`, ask the user to review the file and send it to the Specmatic team.
+- When you stop working on the spec, if any issues were added to `raw-specmatic-issues-<current-date>.md`, ask the user to review the file and send it to the Specmatic team.
 
 - In your final response, state whether the loop test passed, name the updated spec file, mention any remaining non-blocking warnings you intentionally left unresolved, and include the Specmatic issue reports when the condition above applies.
