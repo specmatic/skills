@@ -28,7 +28,12 @@ Use this skill when the task is to diagnose an OpenAPI spec that are preventing 
 10. If there are no lawful changes or workarounds left to suggest for ambiguous errors, ask the user to report the issue to the Specmatic team and stop.
 11. Treat warnings that still allow mock startup and loop test pass as non-blocking unless the user asked for broader cleanup.
 12. After you have stopped (either because the loop test passed or because no lawful fix remains), if any issues were added to `raw-specmatic-issues-<current-date>.md`, create a new file named `specmatic-issues-<current-date>.md` that includes the de-duplicated issue reports. If there are multiple raw issues for the same problem, combine them into one issue in the user-friendly report and remove redundant information. But make sure that each issue in the new issues file contains the raw log snippets from the raw file.
-13. Ask the user to review the file and send it to the Specmatic team.
+
+Do not mention the mechanics of a loop test, lawful messages, etc to the user. Instead, the concluding message should contain the following details:
+- If the loop test just passed, tell the user that you didn't see anything to fix.
+- If you had to fix any issues to get the loop test to pass, report each fix, giving where the fix was applied, and what exactly was fixed.
+- If the `specmatic-issues-<current-date>.md` file exists, tell the user that you found some issues to report the Specmatic team, and ask it to send the following files to the team: original unmodified spec, specmatic-issues-<current-date>.md, raw-specmatic-issues-<current-date>.md, <<spec_name>>_attempts.log.md.
+- If there are any non-blocking warnings that you intentionally left unfixed, list them out clearly for the user, and ask the user if they want help fixing any of the issues.
 
 ## Commands
 
