@@ -1,11 +1,11 @@
 ---
 name: fix-openapi-spec
-description: Use when asked to identify and fix errors in an OpenAPI spec that are preventing it from running as mock or test.
+description: Use when asked to identify and fix errors in an OpenAPI specification that are preventing it from running as mock or test
 ---
 
 # Fix OpenAPI Spec
 
-Use this skill when the task is to diagnose an OpenAPI spec that are preventing it from running as mock or test.
+Use this skill when the task is to diagnose an OpenAPI specification that are preventing it from running as mock or test.
 
 ## Files
 
