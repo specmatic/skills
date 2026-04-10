@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specmatic.dev/schemas/externalised-example.schema.json",
+  "title": "Specmatic Async Externalised Example",
+  "description": "JSON shape for Specmatic externalised async examples used by the asyncapi spec extractor skill.",
+  "type": "object",
+  "required": ["name"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Human-readable example name used by Specmatic while loading and reporting examples."
+    },
+    "id": {
+      "type": "string",
+      "description": "Optional stable identifier for the example."
+    },
+    "receive": {
+      "$ref": "#/$defs/messageEnvelope",
+      "description": "Inbound message for receive-only and receive-reply flows."
+    },
+    "send": {
+      "$ref": "#/$defs/messageEnvelope",
+      "description": "Outbound message for send-only and receive-reply flows."
+    },
+    "retry": {
+      "$ref": "#/$defs/messageEnvelope",
+      "description": "Optional retry message example when the contract models retry behavior."
+    },
+    "dlq": {
+      "$ref": "#/$defs/messageEnvelope",
+      "description": "Optional dead-letter message example when the contract models DLQ behavior."
+    },
+    "before": {
+      "type": "array",
+      "description": "Optional fixtures executed before the main message exchange.",
+      "items": {
+        "$ref": "#/$defs/fixture"
+      }
+    },
+    "after": {
+      "type": "array",
+      "description": "Optional fixtures executed after the main message exchange for verification or cleanup.",
+      "items": {
+        "$ref": "#/$defs/fixture"
+      }
+    }
+  },
+  "anyOf": [
+    { "required": ["receive"] },
+    { "required": ["send"] }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "messageEnvelope": {
+      "type": "object",
+      "required": ["topic", "payload"],
+      "properties": {
+        "topic": {
+          "type": "string",
+          "description": "Channel address or topic name used in the async exchange."
+        },
+        "payload": {
+          "description": "Concrete example payload sent to or received from the broker."
+        },
+        "headers": {
+          "type": "object",
+          "description": "Optional example message headers.",
+          "additionalProperties": true
+        },
+        "key": {
+          "description": "Optional partitioning or routing key for brokers such as Kafka."
+        }
+      },
+      "additionalProperties": false
+    },
+    "fixture": {
+      "type": "object",
+      "description": "Permissive fixture object. Common cases include HTTP setup and HTTP verification fixtures.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Fixture type, for example http."
+        },
+        "wait": {
+          "type": "string",
+          "description": "Optional ISO-8601 duration to wait before executing the fixture."
+        },
+        "http-request": {
+          "$ref": "#/$defs/httpRequest"
+        },
+        "http-response": {
+          "$ref": "#/$defs/httpResponse"
+        }
+      },
+      "additionalProperties": true
+    },
+    "httpRequest": {
+      "type": "object",
+      "properties": {
+        "baseUrl": { "type": "string" },
+        "path": { "type": "string" },
+        "method": { "type": "string" },
+        "headers": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "query": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "body": {}
+      },
+      "additionalProperties": true
+    },
+    "httpResponse": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "integer"
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "body": {}
+      },
+      "additionalProperties": true
+    }
+  }
+}
