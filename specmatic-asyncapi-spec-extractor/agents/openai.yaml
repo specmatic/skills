@@ -1,4 +1,0 @@
-interface:
-  display_name: "Specmatic AsyncAPI Extractor"
-  short_description: "Extract AsyncAPI and run async test loops"
-  default_prompt: "Use $specmatic-asyncapi-spec-extractor to synthesize async annotations, derive an AsyncAPI 3.0.0 spec, and run the async feedback loop for this codebase."
