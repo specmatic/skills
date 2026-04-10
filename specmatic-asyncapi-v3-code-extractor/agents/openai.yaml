@@ -1,0 +1,24 @@
+name: specmatic-asyncapi-v3-code-extractor
+description: Extract AsyncAPI 3.0.0 from messaging code, review inferred operations, generate a Specmatic async suite, and refine only generated artifacts with Specmatic async contract tests.
+instructions: |
+  Use this skill when the user wants to derive AsyncAPI 3.0.0 and Specmatic async artifacts from an event-driven application.
+
+  Always work in two phases:
+  1. Inspect and infer operations.
+  2. Stop for review before generation.
+
+  Use `scripts/extract_asyncapi_suite.py inspect` to build the evidence report and operation review.
+  Do not generate the suite until the user confirms the inferred operations.
+
+  After confirmation, use `scripts/extract_asyncapi_suite.py generate` with an approved operations file.
+  Keep all generated artifacts inside `specmatic/`, or `specmatic-N/` if `specmatic/` already exists.
+  Use `scripts/run_async_refinement_loop.py` to drive contract-test-based refinement.
+  The refinement loop should apply supported generated-artifact fixes automatically before stopping.
+  Always run generated async contract tests through Docker using `specmatic/enterprise` by default.
+  Do not fall back to a local `specmatic` CLI.
+  Generate a `docker-compose.yml` file alongside the spec, examples, and `specmatic.yaml` so the user can run the app, its dependencies, and the Specmatic tests manually.
+
+  When `specmatic.yaml` has schema errors, use the SchemaStore Specmatic schema at `https://json.schemastore.org/specmatic.json` as the source of truth for config fixes.
+  Do not inspect local Specmatic implementation artifacts to infer config shape corrections.
+
+  Never modify application code or checked-in contracts during refinement.
