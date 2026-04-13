@@ -84,24 +84,24 @@ Note: for regexes, Specmatic uses the dk.brics.automaton.Regexp library, which s
   - Details: any other relevant details that can help the Specmatic team identify and fix the issue
 - As each such Specmatic issue report is produced, append it to a file named `raw-specmatic-issues-<current-date>.md` in the current working directory. Create the file if it does not exist.
 
-## Commands
+## Available scripts
 
 Run the loop test with one of:
 
-```bash
-./.codex/skills/fix-openapi-spec/scripts/run_loop_test.sh path/to/spec-updated.yaml
+```shell
+[.codex|.agent]/skills/specmatic-skills/fix-openapi-spec/scripts/run_loop_test.sh <path/to/spec-updated.yaml>
 ```
 
 ```powershell
-pwsh ./.codex/skills/fix-openapi-spec/scripts/run_loop_test.ps1 path/to/spec-updated.yaml
+pwsh [.codex|.agent]/skills/specmatic-skills/fix-openapi-spec/scripts/run_loop_test.ps1 <path/to/spec-updated.yaml>
 ```
 
 Validate the spec with one of:
 
-```bash
-./.codex/skills/fix-openapi-spec/scripts/run_validate_test.sh path/to/spec-updated.yaml
+```shell
+[.codex|.agent]/skills/specmatic-skills/fix-openapi-spec/scripts/run_validate_test.sh <path/to/spec-updated.yaml>
 ```
 
 ```powershell
-pwsh ./.codex/skills/fix-openapi-spec/scripts/run_validate_test.ps1 path/to/spec-updated.yaml
+pwsh [.codex|.agent]/skills/specmatic-skills/fix-openapi-spec/scripts/run_validate_test.ps1 <path/to/spec-updated.yaml>
 ```
