@@ -86,22 +86,10 @@ Note: for regexes, Specmatic uses the dk.brics.automaton.Regexp library, which s
 
 ## Available scripts
 
-Run the loop test with one of:
+Scripts for running the loop test
+- **scripts/run_loop_test.sh <path/to/spec-updated.yaml>** - runs the loop test on MacOS / Linux
+- **scripts/run_loop_test.ps1 <path/to/spec-updated.yaml>** - runs the loop test on Windows
 
-```shell
-[.codex|.agent]/skills/specmatic-skills/fix-openapi-spec/scripts/run_loop_test.sh <path/to/spec-updated.yaml>
-```
-
-```powershell
-pwsh [.codex|.agent]/skills/specmatic-skills/fix-openapi-spec/scripts/run_loop_test.ps1 <path/to/spec-updated.yaml>
-```
-
-Validate the spec with one of:
-
-```shell
-[.codex|.agent]/skills/specmatic-skills/fix-openapi-spec/scripts/run_validate_test.sh <path/to/spec-updated.yaml>
-```
-
-```powershell
-pwsh [.codex|.agent]/skills/specmatic-skills/fix-openapi-spec/scripts/run_validate_test.ps1 <path/to/spec-updated.yaml>
-```
+Scripts for running the spec validation
+- **scripts/validate_spec.sh <path/to/spec-updated.yaml>** - runs the spec validation on MacOS / Linux
+- **scripts/validate_spec.ps1 <path/to/spec-updated.yaml>** - runs the spec validation on Windows
