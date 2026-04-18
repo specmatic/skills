@@ -5,91 +5,176 @@ description: Use when asked to identify and fix errors in an OpenAPI specificati
 
 # Fix OpenAPI Spec
 
-Use this skill when the task is to diagnose an OpenAPI specification that are preventing it from running as mock or test.
+Use this skill when the task is to diagnose an OpenAPI specification that is preventing it from running as mock or test.
 
-## Workflow
+## Canonical Paths
 
-Phase: Preparation
+Use these exact paths and file names everywhere in this workflow.
 
-1. Identify the input spec path.
-2. Create a copy for edits named `<spec-file>-updated.<ext>` in the same directory as the source spec.
-    - Note: Always edit the `-updated` copy, not the original spec.
-3. Create a single append-only attempt log file named `<spec>_attempts.log.md` in the spec directory (`<spec>` means the spec filename without extension).
+- Editable spec copy: `<spec-name>-updated.<ext>`
+- Actions log: `fix-log-<spec-name>-<current-date>.md`
 
-Phase: Auto-fix debugging loop
+## Workflow State Machine
+
+Execute all phases in sequence.
+
+- `Phase 1 -> Phase 2 -> Phase 3 -> Phase 4`
+- At Phase 2, run the phase until all errors are addressed (either fixed or classified as unfixable).
+- At Phase 4, if errors are detected, ask the user if they want help fixing them.
+
+### Phase 1: Setup log files
+
+1. Create a copy of the input spec path for edits named `<spec-name>-updated.<ext>` in the same directory as the source spec.
+  - Note: Always edit the `-updated` copy, not the original spec.
+2. Create a single append-only actions log file named `fix-log-<spec-name>-<current-date>.md` in the spec directory, with the following initial content:
+  ```
+  # Actions log for <spec-file>
+
+  ```
+
+### Phase 2: Auto-fix loop
 
 1. Run the loop test script against the editable copy.
-2. If the loop test passes, go to the next phase.
-3. If the loop test fails, all tests that have failed are considered "must-fix" errors, and additionally an errors with obscure error messages that don't clearly indicate the issue in the spec are also considered "must-fix" errors.
-4. For each must-fix error
-    - form a hypothesis about the cause of the problem, and which allowed fix will resolve it
-    - Apply the allowed fix
-    - Append a structured entry to the `<spec>_attempts.log.md` file for every loop-test run and fix attempt, as soon as the fix attempt is made. Include: timestamp, attempted change, why it was attempted, and whether it fixed the issue, conclusion (`fixed`, `not fixed`)
-    - Rerun the loop test, and repeat until it passes or no allowed fix to a must-fix error can be made.
-    -  Create a "Specmatic Bug Report" as per "Specmatic Bug Report" section if:
-      - The error message was opaque and did not clearly state the issue in the spec, OR
-      - The spec seems correct, but a spec change was still required for the count of "Successes" in the loop test report at the end to increase, OR
-      - There are no allowed changes or workarounds left to suggest for a must-fix error.
-    - Create bug as and when seen, not all at the end.
-5. Keep running this phase until either
-  - all the must-fix errors have been fixed, or
-  - remaining must-fix errors can conclusively NOT be fixed, as there no remaining allowed fixes for them.
+2. Immediately after the loop test ends, append a structured entry to `fix-log-<spec-name>-<current-date>.md` with this format:
+  ```
+  ## <title>
+  **Timestamp**: <timestamp>
+  **Action**: Loop test run
+  **Result**: [pass|fail] - <brief description of the result>
+  
+  ```
+3. If the loop test passes, go to step 5, the final check. All failed tests are considered "must-fix" errors.
+4. If the loop test fails, attempt to fix one of the errors following the guidelines for addressing errors, and then go back to step 1.
+5. If any must-fix errors remain to be addressed, go back to step 1 and repeat the process until all must-fix errors have been addressed.
 6. Final check: once all the tests are passing, go back to step one and run the loop test again to make sure that there are no errors left.
 
-Phase: Report on auto-fix phase
+Guidelines for addressing errors:
+- Classify every failure before moving on:
+  - `Spec Issue`: the run points to a concrete schema, example, enum, `$ref`, `required`, or constraint defect in the spec.
+  - `Specmatic Bug`: the error is unclear (does not identify a concrete spec defect or provide enough information to point directly to where the issue is), or if it appears that Specmatic cannot handle a value / feature in the spec that is perfectly legimiate (e.g. valid regex syntax, valid OpenAPI syntax, etc)
+  - Treat any opaque error as a `Specmatic Bug`. "Opaque" means the message does not identify a concrete spec defect or does not provide enough information to fix the spec confidently.
 
-1. After you have stopped (either because the loop test passed or because no allowed fix remains), if any issues were added to `raw-specmatic-issues-<current-date>.md`, create a new file named `specmatic-issues-<current-date>.md` that includes the de-duplicated issue reports. If there are multiple raw issues for the same problem, combine them into one issue in the user-friendly report and remove redundant information. But make sure that each issue in the new issues file contains the raw log snippets from the raw file.
-2. Prepare a report for the user. Do not mention the mechanics, such the fact that there was a test or mock, that anything passed or responded, etc to the user. Instead, the concluding message should contain the following details:
-- If the loop test just passed, tell the user that you didn't see anything to fix.
-- If you had to fix any issues to get the loop test to pass, report each fix with the following details:
-  - where the fix was applied
-  - what exactly was fixed
-  - why did you have to fix it
-  - whether it is an issue in the spec, or a bug in Specmatic
-3. If the `specmatic-issues-<current-date>.md` file exists, tell the user that you found some issues to report the Specmatic team, and ask it to send the following files to the team: original unmodified spec, specmatic-issues-<current-date>.md, raw-specmatic-issues-<current-date>.md, <<spec_name>>_attempts.log.md.
+- If the issue is classified as a `Specmatic Bug`, log it immediately when first observed in `fix-log-<spec-name>-<current-date>.md`, using this format:
+  ```
+  ## <title>
+  **Timestamp**: <timestamp>
+  **Action**: Issue Classification
+  **Error**: <error message that prompted this bug classification>
+  **Classification**: Specmatic Bug
+  **Reason**: <why this is considered a Specmatic Bug instead of a concrete spec defect>
+  **Logs**: <log snippet showing the issue that prompted the fix>
 
-Phase: Fix remaining "actionable" load time errors
+  ```
 
-- Run the validate command on the `<spec-file>-updated.<ext>` spec, and give the user a bullet-point list of all actionable load time errors, with the following details against each:
-  - elaborate on the error to the best of your understanding
-  - give a single concrete suggestion that would resolve the error
-- Ask the user if they want help fixing any of the errors
-- For each error the user wants help with, apply the allowed fix, and re-run the validate command until the error that the user wanted fixed is no longer appearing in the validate test report. If you believe that the error can't be fixed, create a Specmatic Bug Report for it.
+- If the issue is classified as a `Spec Issue`, log it immediately when first observed in `fix-log-<spec-name>-<current-date>.md`, using this format:
+  ```
+  ## <title>
+  **Timestamp**: <timestamp>
+  **Action**: Issue Classification
+  **Error**: <error message that prompted this bug classification>
+  **Classification**: Spec Issue
+  **Reason**: <why this is considered a Spec Issue instead of a Specmatic Bug>
+  **Logs**: <log snippet showing the issue that prompted the fix>
 
-## Allowed Fixes
+  ```
 
-- The following changes are not allowed:
-  - Widening a JSON schema from `additionalProperties: false` to `additionalProperties: true`
-  - Dropping a property from a JSON schema completely. At most you may make properties optional or mandatory
-  - Changing descriptions, titles, summaries, and other metadata (these are never parsed by Specmatic)
-  - Avoid changing the request or response datatype
+- Do not wait for the bug to be resolved before logging it.
+- Form a hypothesis about the cause of the error, and whether there is an allowed fix which you have not yet tried that will resolve it. Even if the error seems unclear or opaque, form a hypothesis anyway, make your best guess, based on the error message, field names, and schema context.
+- If allowed fixes are available to be tried as per the "Allowed fixes" section,
+  - attempt the fixes in order of preference as outlined,
+  - Immediately after applying a fix, append a structured entry to `fix-log-<spec-name>-<current-date>.md` with the format:
+  ```
+  ## Fix: <summary of the fix>
+  **Timestamp**: <timestamp>
+  **Action**: Fix applied
+  **Fix**: <description>
+  **Reason**: <why you think this fix should resolve the issue>
+  **Logs**: <log snippet showing the issue that prompted the fix>
 
-- If you feel that an obscure must-fix error is related to a constraint (datatype is still correct but constraint such as regex, minLength, maximum, etc is broken), you may do the following:
-  - First consider updating the constraint to correct it's syntax, and re-attempt the loop test.
-  - If the fix doesn't work, but based on the field name and schema context you can make an educated guess about how to update the constraint, do so, and re-attempt the loop test.
-  - If you can't find a way to provide a valid constraint, remove it and re-attempt the loop test.
+  ```
+  - Then go back to Step 1 of this phase and run the loop test again to see if the fix resolved the issue.
 
+- However if there are no more allowed fixes left to try and the issue remains unresolved, consider the issue addressed and log a "Specmatic Bug" entry in the following format:
+  ```
+  ## Unfixable: <summary of the bug>
+  **Timestamp**: <timestamp>
+  **Action**: Dropping issue as unfixable
+  **Classification**: Specmatic Bug
+  **Reason**: <Why you concluded that this was unfixable>
+  **Logs**: <log snippet showing the issue that prompted this conclusion>
+
+  ```
+
+### Phase 3: Report on auto-fix phase
+
+1. Prepare a console report for the user. Do not mention mechanics such as test execution details, mock startup details, or pass/fail runtime chatter. Instead, the concluding message should contain the following details:
+  - If you had to fix any issues to get the loop test to pass, report each fix with the following details:
+    - where the fix was applied
+    - what exactly was fixed
+    - why it had to be fixed
+    - whether it is an issue in the spec, or a bug in Specmatic
+2. If the `fix-log-<spec-name>-<current-date>.md` file contains any "Specmatic Bug" entries
+  - inform the user that you found some Specmatic issues to report to the Specmatic team
+  - ask them to send the following files to the team:
+    - the original spec file
+    - `<spec-name>-updated.<ext>` (the edited spec file)
+    - the `fix-log-<spec-name>-<current-date>.md` file
+3. Report the following summary statistics:
+  - files created
+  - files modified
+  - total loop runs executed
+  - total fixes applied
+
+### Phase 4: Address load time errors
+
+1. Run the validate command on the `<spec-name>-updated.<ext>` spec.
+2. If there are no errors, report to the user that the spec is now valid and can be used for testing and mocking with Specmatic, and end the process.
+3. If there are errors, do NOT fix any errors. First list them out, and ask the user if they want to address spec defects on the `-updated` copy.
+4. For each load-time error that the users wants to address:
+  - Classify and log the error following the same classification and logging contract as in Phase 2.
+6. Apply allowed fixes to the `-updated` copy based on the error messages and classification, following the same guidelines for allowed fixes as in Phase 2.
+7. Repeat this phase until all actionable load-time errors are addressed.
+8. If you conclude that an issue cannot be fixed using allowed fixes, log it as a "Specmatic Bug" following the same contract as in Phase 2, consider it addressed.
+
+## Disallowed fixes
+
+The following changes are not allowed:
+- Widening a JSON schema from `additionalProperties: false` to `additionalProperties: true`
+- Dropping a property from a JSON schema completely. At most you may make properties optional or mandatory
+- Changing descriptions, titles, summaries, and other metadata (these are never parsed by Specmatic)
+- Avoid changing the request or response datatype
+- Remove a security scheme from an API
+
+## Allowed fixes
+
+Guidelines for fixing constraints and examples:
+- If you feel that an obscure must-fix error is related to a constraint (datatype is still correct but constraint such as regex, minLength, maximum, etc is broken), attempt the following fixes in order of preference:
+  - If the constraint syntax is invalid, fix the syntax and re-attempt the loop test.
+  - If the loop test fails, then based on the field name and schema context, make an educated guess, update the constraint, and re-attempt the loop test.
+  - Final option, remove the constraint and re-attempt the loop test.
 - When an enum does not match the schema constraint, remove the constraint.
 - When an example value does not match schema, update the example value to something meaningful based on the datatype and field name.
 
 Note: for regexes, Specmatic uses the dk.brics.automaton.Regexp library, which supports a specific regex syntax.
 
-## Specmatic Bug Report
+## Logging Contract (Mandatory)
 
-- Log the bug report in `raw-specmatic-issues-<current-date>.md`
-- Include all of the following in the bug report:
-  - Error: the unclear or insufficient error message
-  - Change: the change that had to be made to the spec in order for the loop test to pass
-  - Logs: the relevant log snippet - include the raw log content
-  - Details: any other relevant details that can help the Specmatic team identify and fix the issue
-- As each such Specmatic issue report is produced, append it to a file named `raw-specmatic-issues-<current-date>.md` in the current working directory. Create the file if it does not exist.
+- After every loop test run: append one loop-run entry to `fix-log-<spec-name>-<current-date>.md`.
+- After every applied fix: append one fix entry to `fix-log-<spec-name>-<current-date>.md`.
+- For every observed `Specmatic Bug` or `Spec Issue`: append one matching classification entry to `fix-log-<spec-name>-<current-date>.md`.
 
 ## Available scripts
 
-Scripts for running the loop test
-- **scripts/run_loop_test.sh <path/to/spec-updated.yaml>** - runs the loop test on MacOS / Linux
-- **scripts/run_loop_test.ps1 <path/to/spec-updated.yaml>** - runs the loop test on Windows
+Note:
+- Scripts for MacOS / Linux require bash
+- Scripts for Windows require powershell
 
-Scripts for running the spec validation
-- **scripts/validate_spec.sh <path/to/spec-updated.yaml>** - runs the spec validation on MacOS / Linux
-- **scripts/validate_spec.ps1 <path/to/spec-updated.yaml>** - runs the spec validation on Windows
+Scripts for MacOS / Linux (requires bash)
+- **`scripts/run_loop_test.sh`** - runs the loop test
+- **`scripts/validate_spec.sh`** - validates a spec
+
+Scripts for Windows (requires powershell)
+- **`scripts/run_loop_test.ps1`** - runs the loop test
+- **`scripts/validate_spec.ps1`** - validates a spec
+
+When running these scripts, resolve the path from the working directory of the fix-openapi-spec skill.
