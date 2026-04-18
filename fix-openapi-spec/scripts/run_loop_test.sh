@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+export VERSION=2.43.1
+
 SPECMATIC_DOCKER_IMAGE="${SPECMATIC_DOCKER_IMAGE:-specmatic/specmatic:latest}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:9000/_specmatic/health}"
 STARTUP_TIMEOUT_SECONDS=10
@@ -9,8 +11,25 @@ MAX_TEST_REQUEST_COMBINATIONS="${MAX_TEST_REQUEST_COMBINATIONS:-1}"
 MOCK_PID=""
 MOCK_CONTAINER_NAME=""
 
+usage() {
+  cat <<EOF
+Usage: $0 <spec-file.[yaml|yml|json]>
+
+Starts a Specmatic mock for the given spec, waits for the health endpoint,
+and then runs a loop test against it.
+
+Options:
+  --help    Show this help message and exit
+EOF
+}
+
+if [[ $# -eq 1 && "$1" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
 if [[ $# -ne 1 ]]; then
-  echo "Usage: $0 <spec-file.[yaml|yml|json]>" >&2
+  usage >&2
   exit 2
 fi
 

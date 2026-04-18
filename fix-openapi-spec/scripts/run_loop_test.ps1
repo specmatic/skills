@@ -1,11 +1,36 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true, Position = 0)]
-    [string]$SpecFile
+    [Parameter(Position = 0)]
+    [string]$SpecFile,
+
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$RemainingArgs = @()
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+function Show-Usage {
+    @"
+Usage: ./run_loop_test.ps1 <spec-file.[yaml|yml|json]>
+
+Starts a Specmatic mock for the given spec, waits for the health endpoint,
+and then runs a loop test against it.
+
+Options:
+  --help    Show this help message and exit
+"@
+}
+
+if ($SpecFile -eq "--help" -or $RemainingArgs -contains "--help") {
+    Show-Usage
+    exit 0
+}
+
+if (-not $SpecFile -or $RemainingArgs.Count -gt 0) {
+    [Console]::Error.WriteLine((Show-Usage))
+    exit 2
+}
 
 $SPECMATIC_DOCKER_IMAGE = if ($env:SPECMATIC_DOCKER_IMAGE) { $env:SPECMATIC_DOCKER_IMAGE } else { "specmatic/specmatic:latest" }
 $HEALTH_URL = if ($env:HEALTH_URL) { $env:HEALTH_URL } else { "http://127.0.0.1:9000/_specmatic/health" }

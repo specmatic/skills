@@ -2,10 +2,28 @@
 
 set -euo pipefail
 
+export VERSION=2.43.1
+
 SPECMATIC_ENTERPRISE_DOCKER_IMAGE="${SPECMATIC_ENTERPRISE_DOCKER_IMAGE:-specmatic/enterprise:latest}"
 
+usage() {
+  cat <<EOF
+Usage: $0 <spec-file.[yaml|yml|json]>
+
+Runs Specmatic Enterprise validation for the given OpenAPI spec.
+
+Options:
+  --help    Show this help message and exit
+EOF
+}
+
+if [[ $# -eq 1 && "$1" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
 if [[ $# -ne 1 ]]; then
-  echo "Usage: $0 <spec-file.[yaml|yml|json]>" >&2
+  usage >&2
   exit 2
 fi
 
