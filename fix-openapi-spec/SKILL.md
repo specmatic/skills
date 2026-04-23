@@ -20,7 +20,7 @@ Execute all phases in sequence.
 
 - `Phase 1 -> Phase 2 -> Phase 3 -> Phase 4`
 - At Phase 2, run the phase until all errors are addressed (either fixed or classified as unfixable).
-- At Phase 4, if errors are detected, ask the user if they want help fixing them.
+- At Phase 4, if warnings or errors are detected, ask the user if they want help fixing them.
 
 ### Phase 1: Setup log files
 
@@ -125,12 +125,12 @@ Guidelines for addressing errors:
   - total loop runs executed
   - total fixes applied
 
-### Phase 4: Address load time errors
+### Phase 4: Address load time errors and warnings
 
 1. Run the validate command on the `<spec-name>-updated.<ext>` spec.
-2. If there are no errors, report to the user that the spec is now valid and can be used for testing and mocking with Specmatic, and end the process.
-3. If there are errors, do NOT fix any errors. First list them out, and ask the user if they want to address spec defects on the `-updated` copy.
-4. For each load-time error that the users wants to address:
+2. If there are no errors or warnings, report to the user that the spec is now valid and can be used for testing and mocking with Specmatic, and end the process.
+3. If there are errors or warnings, do NOT fix any errors or warnings. First list them out, and ask the user if they want to address spec defects on the `-updated` copy.
+4. For each load-time error or warning that the users wants to address:
   - Classify and log the error following the same classification and logging contract as in Phase 2.
 6. Apply allowed fixes to the `-updated` copy based on the error messages and classification, following the same guidelines for allowed fixes as in Phase 2.
 7. Repeat this phase until all actionable load-time errors are addressed.
