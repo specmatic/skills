@@ -429,12 +429,9 @@ systemUnderTest:
               # filter: PATH!='/internal/metrics'
     data:
       examples:
-        testExamples:
-          - directories:
-              - ./specmatic/<your-openapi-file_without_ext>_examples
-        mockExamples:
-          - directories:
-              - ./specmatic/stub-<dependency-name>_examples
+        - directories:
+            - ./specmatic/<your-openapi-file_without_ext>_examples
+            - ./specmatic/stub-<dependency-name>_examples
       # dictionary:
       #   path: ./specmatic/dictionary.yaml
 specmatic:
