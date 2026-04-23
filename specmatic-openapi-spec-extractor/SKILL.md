@@ -334,10 +334,15 @@ command -v docker >/dev/null 2>&1
 ```
 
 - If this fails, treat it as "Docker CLI is not available in this environment", not as "Docker Engine is not running". Stop and ask the agent to prompt the user to make Docker available.
-- If the Docker CLI exists, check daemon availability with retries:
+- If the Docker CLI exists, check daemon availability with retries.
+- Treat exit status as the source of truth. Do not treat stderr warnings from Docker CLI plugins, context helpers, or environment notices as a readiness failure when the command exits `0`.
+- Prefer `docker version --format '{{.Server.Version}}'` as the primary readiness probe because it is lightweight and succeeds when the client can reach the server. Use `docker info` as a fallback for older setups:
 
 ```bash
 for attempt in 1 2 3; do
+  if docker version --format '{{.Server.Version}}' >/dev/null 2>&1; then
+    exit 0
+  fi
   if docker info >/dev/null 2>&1; then
     exit 0
   fi
@@ -347,7 +352,9 @@ exit 1
 ```
 
 - If the retrying check succeeds, proceed directly into the hardening loop without asking the user for permission to start it.
-- If the Docker CLI exists but the retrying `docker info` check still fails, treat it as "Docker Engine or daemon is currently unreachable" and ask the agent to prompt the user to start Docker Engine or fix Docker connectivity before continuing.
+- If `docker version --format '{{.Server.Version}}'` succeeds, treat Docker as ready even if `docker info` prints warnings.
+- If the Docker CLI exists but both readiness probes still fail after retries, treat it as "Docker Engine or daemon is currently unreachable" and ask the agent to prompt the user to start Docker Engine or fix Docker connectivity before continuing.
+- If a direct shell check in the current environment succeeds, do not tell the user Docker is down. Proceed into the hardening loop immediately.
 - Do not collapse every Docker failure into "Docker Engine is not running". Distinguish CLI-not-found from daemon-unreachable.
 - Do not ask the user to explicitly tell you to start the hardening loop after extraction. Starting the loop is the default behavior.
 - After prompting for a Docker issue, re-run the readiness sequence automatically. If the recheck succeeds, continue the hardening loop automatically without waiting for the user to say "continue".
