@@ -326,9 +326,37 @@ Default behavior:
 - As soon as spec extraction succeeds, immediately start this feedback loop and begin setup.
 - Do not stop after extraction unless the user explicitly asks for extraction-only output.
 
-Before running this loop, ask the user to start Docker Engine and confirm it is running. Do not start this loop until this is acknowledged.
-Use this exact style of prompt:
-- "Next, we will harden the extracted OpenAPI spec using the Specmatic feedback loop. Please confirm Docker Engine is running, and I’ll begin the setup."
+Before running this loop, check whether Docker Engine is running on the user's machine.
+- Use this readiness sequence:
+
+```bash
+command -v docker >/dev/null 2>&1
+```
+
+- If this fails, treat it as "Docker CLI is not available in this environment", not as "Docker Engine is not running". Stop and ask the agent to prompt the user to make Docker available.
+- If the Docker CLI exists, check daemon availability with retries:
+
+```bash
+for attempt in 1 2 3; do
+  if docker info >/dev/null 2>&1; then
+    exit 0
+  fi
+  sleep 2
+done
+exit 1
+```
+
+- If the retrying check succeeds, proceed directly into the hardening loop without asking the user for permission to start it.
+- If the Docker CLI exists but the retrying `docker info` check still fails, treat it as "Docker Engine or daemon is currently unreachable" and ask the agent to prompt the user to start Docker Engine or fix Docker connectivity before continuing.
+- Do not collapse every Docker failure into "Docker Engine is not running". Distinguish CLI-not-found from daemon-unreachable.
+- Do not ask the user to explicitly tell you to start the hardening loop after extraction. Starting the loop is the default behavior.
+- After prompting for a Docker issue, re-run the readiness sequence automatically. If the recheck succeeds, continue the hardening loop automatically without waiting for the user to say "continue".
+
+Use this style of prompt only when the Docker CLI exists but the daemon is still unreachable after retries:
+- "I’ve finished extracting the OpenAPI spec and I’m ready to start the Specmatic hardening loop. Docker Engine does not appear to be running on this machine. Please start Docker Engine, and I’ll continue automatically once it is available."
+
+Use this style of prompt only when the Docker CLI itself is unavailable:
+- "I’ve finished extracting the OpenAPI spec and I’m ready to start the Specmatic hardening loop, but the Docker CLI is not available in this environment. Please make Docker available here, and I’ll continue automatically once the Docker check succeeds."
 
 ---
 
@@ -372,6 +400,7 @@ npx --yes ajv-cli validate \
 | `systemUnderTest.service.runOptions.openapi.specs[].spec.overlayFilePath` | Overlay file to apply for spec corrections that are not feasible via source annotations |
 | `systemUnderTest.service.data.examples` | External examples configuration for test/mock data |
 | `systemUnderTest.service.data.dictionary` | Dictionary path when pattern substitutions are needed |
+| `specmatic.settings.test.schemaResiliencyTests` | Controls schema resiliency test coverage |
 | `specmatic.settings.test.maxTestRequestCombinations` | Runtime throttle when tests become too slow |
 
 Baseline config (schema-aligned):
@@ -409,18 +438,23 @@ systemUnderTest:
       # dictionary:
       #   path: ./specmatic/dictionary.yaml
 specmatic:
-  license:
-    path: ./specmatic/specmatic-unlimited-license.txt
   settings:
     test:
-      # set to 2 or 1 temporarily when test execution is too slow
-      maxTestRequestCombinations: 2
+      schemaResiliencyTests: all
   governance:
     report:
       formats:
         - html
       outputDirectory: ./build/reports/specmatic
 ```
+
+Default test settings rule:
+- Always set `specmatic.settings.test.schemaResiliencyTests: all`.
+- Do not add `specmatic.settings.test.maxTestRequestCombinations` to `specmatic.yaml` by default.
+- Add `maxTestRequestCombinations: 1` only after observing that contract tests are taking too long to run.
+- Configure `specmatic.license.path` only if `./specmatic/specmatic-unlimited-license.txt` is actually present.
+- If the license file is absent, omit `specmatic.license` entirely and let Specmatic use its built-in trial license.
+- Do not fail the workflow only because the enterprise license file is missing.
 
 Fail-fast rule:
 - Treat any config key outside schema as invalid.
@@ -448,7 +482,7 @@ Rules:
 
 ### 3. Set up deterministic test data and external examples
 
-External examples are mandatory for deterministic results and must be set for both tests and stubs.
+External examples are used for deterministic positive-path scenarios and for stub behavior where concrete payloads are required.
 
 Example directory conventions:
 - Main API spec: `./specmatic/<spec-name>_examples/`
@@ -456,6 +490,7 @@ Example directory conventions:
 
 Per-batch rule:
 - Regenerate/update external examples for each batch so payload values match seeded DB records for that run.
+- Do not add examples for `400` scenarios. Let Specmatic generate and exercise invalid-request coverage through schema resiliency tests instead of pinning `400` cases as examples.
 
 ### 4. Add deterministic data-prep automation (required for loop execution)
 
@@ -541,6 +576,8 @@ Do not test all APIs at once.
    - Summarize progress and ask user: **"Move to next batch of APIs?"**
 6. After each completed/deferred batch, show remaining API groups and let user choose next.
 7. Continue only on explicit user confirmation.
+8. After all selected API groups have been tested, run one final Specmatic test pass for the full API surface without any `--filter`.
+9. Use that final unfiltered run to generate the consolidated HTML report for all endpoints/APIs.
 
 ### User control prompts (required)
 
@@ -554,9 +591,9 @@ Do not test all APIs at once.
 ### Runtime throttle rule for long runs
 
 If batch tests are too slow:
-1. Set `specmatic.settings.test.maxTestRequestCombinations: 2`
-2. If still slow, reduce to `1`
-3. Note this is temporary and should be increased later for broader coverage.
+1. Set `specmatic.settings.test.maxTestRequestCombinations: 1`
+2. Use this only as a runtime throttle after confirming the suite is taking too long to run.
+3. Note this is temporary and should be removed later for broader coverage.
 
 ### Batch progress reporting format
 
@@ -596,7 +633,6 @@ At the end of the workflow, generate one runnable script for users to execute al
 set -euo pipefail
 
 SUT_PORT=8090
-MAX_TEST_REQUEST_COMBINATIONS=2
 PRE_TEST_SETUP_CMD="${PRE_TEST_SETUP_CMD:-}"
 
 # -------------------------------------------------------
@@ -609,8 +645,8 @@ PRE_TEST_SETUP_CMD="${PRE_TEST_SETUP_CMD:-}"
 docker pull specmatic/enterprise:latest
 
 # Optional runtime throttle for slow suites
-# (Ensure this key exists in specmatic.yaml under specmatic.settings.test)
-# yq -i '.specmatic.settings.test.maxTestRequestCombinations = env(MAX_TEST_REQUEST_COMBINATIONS)' specmatic.yaml
+# Add this only after you have observed that the suite is taking too long:
+# yq -i '.specmatic.settings.test.maxTestRequestCombinations = 1' specmatic.yaml
 
 # Optional deterministic setup hook (DB seed + example refresh)
 if [ -n "$PRE_TEST_SETUP_CMD" ]; then
@@ -641,7 +677,7 @@ echo "Done. HTML report: ./build/reports/specmatic/html/index.html"
 
 Include:
 - what `run_contract_tests.sh` does step-by-step
-- required inputs/files (`specmatic.yaml`, specs, examples, license, running SUT)
+- required inputs/files: `specmatic.yaml`, specs, examples, running SUT, plus optional license file if present
 - how to set `SUT_PORT`
 - how to optionally pass deterministic setup hook via `PRE_TEST_SETUP_CMD`
 - where to tune `specmatic.settings.test.maxTestRequestCombinations`
@@ -663,6 +699,7 @@ Include:
 3. **Batch loop checks**
 - Only current batch APIs are tested per run via `--filter`.
 - Loop pauses after each batch and asks user to continue.
+- After the batch loop completes, one final full-suite run happens without `--filter`.
 - Slow runs document and apply `maxTestRequestCombinations` throttle rule.
 
 4. **Script contract checks**
@@ -699,6 +736,6 @@ Include:
 | `host.docker.internal` resolution/connectivity issues (Linux/CI) | Docker host alias not configured in that environment | Keep `--add-host host.docker.internal:host-gateway`; in CI/Linux, provide an equivalent host mapping if needed |
 | Overlay changes are ignored | `overlayFilePath` not enabled or wrong path in `specmatic.yaml` | Uncomment and correct `overlayFilePath`, then rerun |
 | Stub returns invalid or empty responses | Stub spec lacks concrete response examples or wrong port mapping | Add concrete `examples` in stub spec and verify `-p <host>:<container>` port mapping |
-| `License file not found` / enterprise feature error | `specmatic-unlimited-license.txt` missing or path mismatch | Place license in `./specmatic/` and confirm `specmatic.license.path` |
+| `License file not found` / enterprise feature error | `specmatic.license.path` was configured but `specmatic-unlimited-license.txt` is missing or wrong | If the file exists, correct the path; otherwise remove `specmatic.license` and use Specmatic's built-in trial license |
 | Empty or minimal extracted spec | Routes not registered at import/startup time | Ensure all route modules are imported and app startup path loads the full router tree |
 | Framework doc endpoint missing (`/v3/api-docs`, `/api-json`) | OpenAPI library not configured or route path differs | Configure springdoc/@nestjs/swagger and verify the actual docs endpoint path |
