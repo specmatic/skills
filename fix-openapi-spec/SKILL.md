@@ -53,6 +53,7 @@ Guidelines for addressing errors:
   - `Spec Issue`: the run points to a concrete schema, example, enum, `$ref`, `required`, or constraint defect in the spec.
   - `Specmatic Bug`: the error is unclear (does not identify a concrete spec defect or provide enough information to point directly to where the issue is), or if it appears that Specmatic cannot handle a value / feature in the spec that is perfectly legimiate (e.g. valid regex syntax, valid OpenAPI syntax, etc)
   - Treat any opaque error as a `Specmatic Bug`. "Opaque" means the message does not identify a concrete spec defect or does not provide enough information to fix the spec confidently.
+  - A status mismatch is not opaque merely because the final summary only shows `R0002`. Before classifying it as `Specmatic Bug`, inspect the raw temp test log around the full request/response transcript. Look both above and below the failed scenario summary. Only classify as opaque if no response body or adjacent transcript contains a concrete contract path or rule violation.
 
 - If the issue is classified as a `Specmatic Bug`, log it immediately when first observed in `fix-log-<spec-name>-<current-date>.md`, using this format:
   ```
@@ -104,6 +105,13 @@ Guidelines for addressing errors:
   **Logs**: <log snippet showing the issue that prompted this conclusion>
 
   ```
+- When logging a failed loop run, include the most specific inner contract error found in the response body. Do not log only the outer status mismatch if the response body contains a deeper rule violation.
+
+  For example, log:
+  `REQUEST.QUERY.path.to.something <error>` or `RESPONSE.BODY.path.to.something <error>` or 
+
+  instead of:
+  `confirm-payment-source returned 400 instead of 200`.
 
 ### Phase 3: Report on auto-fix phase
 
@@ -154,8 +162,31 @@ Guidelines for fixing constraints and examples:
   - Final option, remove the constraint and re-attempt the loop test.
 - When an enum does not match the schema constraint, remove the constraint.
 - When an example value does not match schema, update the example value to something meaningful based on the datatype and field name.
+- If you get an error saying expected X status but got 400, it means the mock didn't like the request. You will find details adjacent to that message saying why the 400 was returned by the mock.
+- For regexes, Specmatic uses the dk.brics.automaton.Regexp library, which supports a specific regex syntax found in `references/briks-automaton-regex-rules.md`.
 
-Note: for regexes, Specmatic uses the dk.brics.automaton.Regexp library, which supports a specific regex syntax.
+### When a scenario fails with HTTP status mismatch
+
+  If a loop test reports `R0002: HTTP status mismatch`, do not classify it as opaque until you inspect the request/response transcript for
+  that same failed scenario.
+
+  Specmatic often prints the detailed contract failure inside the mock response body, before the final `Unsuccessful Scenarios` summary.
+  Search upward from the failed scenario or from `Specification expected status ... but response contained status 400` for the nearest
+  preceding:
+
+  - `Response at ...`
+  - `X-Specmatic-Result: failure`
+  - `Error from contract <spec-file>`
+  - `>> REQUEST...`
+  - `R1003`, `R000x`, `OAS00xx`, or any schema path
+
+  If the response body contains a concrete `>> REQUEST...` or `>> RESPONSE...` path, treat that as the primary failure, not the outer
+  `R0002` status mismatch.
+
+  Example:
+  - Outer error: `Specification expected status 200 but response contained status 400`
+  - Response body detail: `>> REQUEST.BODY.payment_source.card.network_token.cryptogram`
+  - Classification: Spec Issue if the path points to a concrete schema constraint that can be fixed.
 
 ## Logging Contract (Mandatory)
 
