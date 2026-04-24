@@ -137,7 +137,7 @@ Guidelines for addressing errors:
 
 1. Run the validate command on the `<spec-name>-updated.<ext>` spec.
 2. If there are no errors or warnings, report to the user that the spec is now valid and can be used for testing and mocking with Specmatic, and end the process.
-3. If there are errors or warnings, do NOT fix any errors or warnings. First list them out, and ask the user if they want to address spec defects on the `-updated` copy.
+3. If there are errors or warnings, do NOT fix any errors or warnings. First list them out (not just the ids, include the descriptions if Specmatic provided it), and ask the user if they want to address spec defects on the `-updated` copy.
 4. For each load-time error or warning that the users wants to address:
   - Classify and log the error following the same classification and logging contract as in Phase 2.
 6. Apply allowed fixes to the `-updated` copy based on the error messages and classification, following the same guidelines for allowed fixes as in Phase 2.
