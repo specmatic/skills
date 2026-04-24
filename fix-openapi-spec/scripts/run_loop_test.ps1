@@ -1,10 +1,7 @@
 [CmdletBinding()]
 param(
-    [Parameter(Position = 0)]
-    [string]$SpecFile,
-
     [Parameter(ValueFromRemainingArguments = $true)]
-    [string[]]$RemainingArgs = @()
+    [string[]]$InputArgs = @()
 )
 
 Set-StrictMode -Version Latest
@@ -12,29 +9,66 @@ $ErrorActionPreference = "Stop"
 
 function Show-Usage {
     @"
-Usage: ./run_loop_test.ps1 <spec-file.[yaml|yml|json]>
+Usage: ./run_loop_test.ps1 [--port <port>] <spec-file.[yaml|yml|json]>
 
 Starts a Specmatic mock for the given spec, waits for the health endpoint,
 and then runs a loop test against it.
 
 Options:
-  --help    Show this help message and exit
+  --port <port>  Run both mock and test against this port
+  --help         Show this help message and exit
 "@
 }
 
-if ($SpecFile -eq "--help" -or $RemainingArgs -contains "--help") {
-    Show-Usage
-    exit 0
+$SpecFile = $null
+$Port = $null
+$AutoPort = $true
+
+for ($index = 0; $index -lt $InputArgs.Count; $index++) {
+    $argument = $InputArgs[$index]
+
+    switch ($argument) {
+        "--help" {
+            Show-Usage
+            exit 0
+        }
+        "--port" {
+            if (($index + 1) -ge $InputArgs.Count -or $InputArgs[$index + 1].StartsWith("--")) {
+                [Console]::Error.WriteLine("--port requires a value.")
+                [Console]::Error.WriteLine((Show-Usage))
+                exit 2
+            }
+
+            $Port = $InputArgs[$index + 1]
+            $AutoPort = $false
+            $index++
+        }
+        { $_.StartsWith("--") } {
+            [Console]::Error.WriteLine("Unknown option: $argument")
+            [Console]::Error.WriteLine((Show-Usage))
+            exit 2
+        }
+        default {
+            if ($SpecFile) {
+                [Console]::Error.WriteLine("Only one spec file can be provided.")
+                [Console]::Error.WriteLine((Show-Usage))
+                exit 2
+            }
+
+            $SpecFile = $argument
+        }
+    }
 }
 
-if (-not $SpecFile -or $RemainingArgs.Count -gt 0) {
+if (-not $SpecFile) {
     [Console]::Error.WriteLine((Show-Usage))
     exit 2
 }
 
 $SPECMATIC_DOCKER_IMAGE = if ($env:SPECMATIC_DOCKER_IMAGE) { $env:SPECMATIC_DOCKER_IMAGE } else { "specmatic/specmatic:latest" }
-$HEALTH_URL = if ($env:HEALTH_URL) { $env:HEALTH_URL } else { "http://127.0.0.1:9000/_specmatic/health" }
+$HEALTH_URL_OVERRIDE = if ($env:HEALTH_URL) { $env:HEALTH_URL } else { $null }
 $STARTUP_TIMEOUT_SECONDS = 25
+$MAX_AUTO_PORT_ATTEMPTS = 10
 $MAX_TEST_REQUEST_COMBINATIONS = if ($env:MAX_TEST_REQUEST_COMBINATIONS) { $env:MAX_TEST_REQUEST_COMBINATIONS } else { "1" }
 
 if (-not (Test-Path -LiteralPath $SpecFile -PathType Leaf)) {
@@ -76,6 +110,78 @@ function Stop-MockContainer {
     }
 }
 
+function Get-RandomPort {
+    Get-Random -Minimum 49152 -Maximum 65536
+}
+
+function Test-PortLooksAvailable {
+    param([Parameter(Mandatory = $true)][int]$CandidatePort)
+
+    $client = $null
+    try {
+        $client = [System.Net.Sockets.TcpClient]::new()
+        $connection = $client.BeginConnect("127.0.0.1", $CandidatePort, $null, $null)
+        $connected = $connection.AsyncWaitHandle.WaitOne(200, $false)
+        return -not $connected
+    } catch {
+        return $true
+    } finally {
+        if ($client) {
+            $client.Close()
+        }
+    }
+}
+
+function Select-Port {
+    if (-not $script:AutoPort) {
+        return
+    }
+
+    for ($attempt = 1; $attempt -le 20; $attempt++) {
+        $candidate = Get-RandomPort
+        if (Test-PortLooksAvailable -CandidatePort $candidate) {
+            $script:Port = [string]$candidate
+            return
+        }
+    }
+
+    $script:Port = [string](Get-RandomPort)
+}
+
+function Get-HealthUrl {
+    if ($script:HEALTH_URL_OVERRIDE) {
+        return $script:HEALTH_URL_OVERRIDE
+    }
+
+    return "http://127.0.0.1:{0}/_specmatic/health" -f $script:Port
+}
+
+function Test-MockLogHasPortConflict {
+    $patterns = @(
+        "Address already in use",
+        "BindException",
+        "EADDRINUSE",
+        "port is already allocated",
+        "Ports are not available",
+        "bind: address already in use"
+    )
+
+    foreach ($logPath in @($script:mockLog, $script:mockErrLog)) {
+        if (-not (Test-Path -LiteralPath $logPath)) {
+            continue
+        }
+
+        $content = Get-Content -LiteralPath $logPath -Raw
+        foreach ($pattern in $patterns) {
+            if ($content -match [Regex]::Escape($pattern)) {
+                return $true
+            }
+        }
+    }
+
+    return $false
+}
+
 function Test-DockerPreflight {
     $dockerCmd = Get-Command docker -ErrorAction SilentlyContinue
     if (-not $dockerCmd) {
@@ -97,34 +203,66 @@ try {
         Remove-Item -LiteralPath $buildDir -Recurse -Force
     }
 
-    Write-Host "Starting mock for $SpecFile"
-    $mockArgs = @(
-        "run", "--rm",
-        "--network", "host",
-        "--name", $mockContainerName,
-        "-v", "${specDir}:/usr/src/app",
-        "-w", "/usr/src/app",
-        $SPECMATIC_DOCKER_IMAGE,
-        "mock", $specBasename, "--lenient"
-    )
-    $mockProcess = Start-Process -FilePath "docker" -ArgumentList $mockArgs -RedirectStandardOutput $mockLog -RedirectStandardError $mockErrLog -NoNewWindow -PassThru
-
-    $deadline = (Get-Date).AddSeconds($STARTUP_TIMEOUT_SECONDS)
     $healthy = $false
-    while ((Get-Date) -lt $deadline) {
-        if ($mockProcess.HasExited) {
-            [Console]::Error.WriteLine("Mock exited before becoming healthy.")
-            Print-LogTail -Label "mock" -FilePath $mockLog
-            Print-LogTail -Label "mock-stderr" -FilePath $mockErrLog
-            exit 1
+    :mockStartAttempts for ($attempt = 1; $attempt -le $MAX_AUTO_PORT_ATTEMPTS; $attempt++) {
+        Select-Port
+        Write-Host "Using Specmatic port: $Port"
+        Write-Host "Starting mock for $SpecFile"
+
+        $mockSpecmaticArgs = @("mock", "--port", $Port, $specBasename, "--lenient")
+        foreach ($logPath in @($mockLog, $mockErrLog)) {
+            if (Test-Path -LiteralPath $logPath) {
+                Remove-Item -LiteralPath $logPath -Force
+            }
         }
 
-        if ((Get-HttpStatusCode -Url $HEALTH_URL) -eq 200) {
-            $healthy = $true
+        $mockArgs = @(
+            "run", "--rm",
+            "--network", "host",
+            "--name", $mockContainerName,
+            "-v", "${specDir}:/usr/src/app",
+            "-w", "/usr/src/app",
+            $SPECMATIC_DOCKER_IMAGE
+        ) + $mockSpecmaticArgs
+        $mockProcess = Start-Process -FilePath "docker" -ArgumentList $mockArgs -RedirectStandardOutput $mockLog -RedirectStandardError $mockErrLog -NoNewWindow -PassThru
+
+        $deadline = (Get-Date).AddSeconds($STARTUP_TIMEOUT_SECONDS)
+        while ((Get-Date) -lt $deadline) {
+            if ($mockProcess.HasExited) {
+                if ($AutoPort -and $attempt -lt $MAX_AUTO_PORT_ATTEMPTS -and (Test-MockLogHasPortConflict)) {
+                    [Console]::Error.WriteLine("Mock could not bind port $Port; retrying with another port.")
+                    Stop-MockContainer
+                    continue mockStartAttempts
+                }
+
+                [Console]::Error.WriteLine("Mock exited before becoming healthy.")
+                Print-LogTail -Label "mock" -FilePath $mockLog
+                Print-LogTail -Label "mock-stderr" -FilePath $mockErrLog
+                exit 1
+            }
+
+            if ((Get-HttpStatusCode -Url (Get-HealthUrl)) -eq 200) {
+                $healthy = $true
+                break
+            }
+
+            Start-Sleep -Seconds 1
+        }
+
+        if ($healthy) {
             break
         }
 
-        Start-Sleep -Seconds 1
+        if ($AutoPort -and $attempt -lt $MAX_AUTO_PORT_ATTEMPTS -and (Test-MockLogHasPortConflict)) {
+            [Console]::Error.WriteLine("Mock did not become healthy on port $Port; retrying with another port.")
+            Stop-MockContainer
+            continue
+        }
+
+        [Console]::Error.WriteLine("Mock did not become healthy within $STARTUP_TIMEOUT_SECONDS seconds.")
+        Print-LogTail -Label "mock" -FilePath $mockLog
+        Print-LogTail -Label "mock-stderr" -FilePath $mockErrLog
+        exit 1
     }
 
     if (-not $healthy) {
@@ -137,15 +275,16 @@ try {
     Write-Host "Mock is healthy."
     Write-Host "Running loop test for $SpecFile"
 
+    $testSpecmaticArgs = @("test", "--port", $Port, $specBasename, "--lenient")
+
     $testArgs = @(
         "run", "--rm",
         "--network", "host",
         "-e", "MAX_TEST_REQUEST_COMBINATIONS=$MAX_TEST_REQUEST_COMBINATIONS",
         "-v", "${specDir}:/usr/src/app",
         "-w", "/usr/src/app",
-        $SPECMATIC_DOCKER_IMAGE,
-        "test", $specBasename, "--lenient"
-    )
+        $SPECMATIC_DOCKER_IMAGE
+    ) + $testSpecmaticArgs
     $testExitCode = 0
     docker @testArgs *> $testLog
     $testExitCode = $LASTEXITCODE

@@ -5,35 +5,67 @@ set -euo pipefail
 export VERSION=2.43.1
 
 SPECMATIC_DOCKER_IMAGE="${SPECMATIC_DOCKER_IMAGE:-specmatic/specmatic:latest}"
-HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:9000/_specmatic/health}"
 STARTUP_TIMEOUT_SECONDS=10
+MAX_AUTO_PORT_ATTEMPTS=10
 MAX_TEST_REQUEST_COMBINATIONS="${MAX_TEST_REQUEST_COMBINATIONS:-1}"
 MOCK_PID=""
 MOCK_CONTAINER_NAME=""
+PORT=""
+AUTO_PORT="true"
+HEALTH_URL_OVERRIDE="${HEALTH_URL:-}"
 
 usage() {
   cat <<EOF
-Usage: $0 <spec-file.[yaml|yml|json]>
+Usage: $0 [--port <port>] <spec-file.[yaml|yml|json]>
 
 Starts a Specmatic mock for the given spec, waits for the health endpoint,
 and then runs a loop test against it.
 
 Options:
-  --help    Show this help message and exit
+  --port <port>  Run both mock and test against this port
+  --help         Show this help message and exit
 EOF
 }
 
-if [[ $# -eq 1 && "$1" == "--help" ]]; then
-  usage
-  exit 0
-fi
+SPEC_FILE=""
 
-if [[ $# -ne 1 ]]; then
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --help)
+      usage
+      exit 0
+      ;;
+    --port)
+      if [[ $# -lt 2 || "$2" == --* ]]; then
+        echo "--port requires a value." >&2
+        usage >&2
+        exit 2
+      fi
+      PORT="$2"
+      AUTO_PORT="false"
+      shift 2
+      ;;
+    --*)
+      echo "Unknown option: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+    *)
+      if [[ -n "${SPEC_FILE}" ]]; then
+        echo "Only one spec file can be provided." >&2
+        usage >&2
+        exit 2
+      fi
+      SPEC_FILE="$1"
+      shift
+      ;;
+  esac
+done
+
+if [[ -z "${SPEC_FILE}" ]]; then
   usage >&2
   exit 2
 fi
-
-SPEC_FILE="$1"
 
 if [[ ! -f "$SPEC_FILE" ]]; then
   echo "Spec file not found: $SPEC_FILE" >&2
@@ -134,8 +166,55 @@ docker_run_specmatic() {
     "$@" \
     "${SPECMATIC_DOCKER_IMAGE}" \
     "${command}" \
+    --port "${PORT}" \
     "${SPEC_BASENAME}" \
     --lenient
+}
+
+random_port() {
+  echo $((49152 + RANDOM % 16384))
+}
+
+port_looks_available() {
+  local port="$1"
+
+  if (echo >"/dev/tcp/127.0.0.1/${port}") >/dev/null 2>&1; then
+    return 1
+  fi
+
+  return 0
+}
+
+pick_port() {
+  local candidate
+  local attempt
+
+  if [[ "${AUTO_PORT}" != "true" ]]; then
+    return 0
+  fi
+
+  for ((attempt = 1; attempt <= 20; attempt++)); do
+    candidate="$(random_port)"
+    if port_looks_available "${candidate}"; then
+      PORT="${candidate}"
+      return 0
+    fi
+  done
+
+  PORT="$(random_port)"
+}
+
+health_url() {
+  if [[ -n "${HEALTH_URL_OVERRIDE}" ]]; then
+    echo "${HEALTH_URL_OVERRIDE}"
+    return 0
+  fi
+
+  echo "http://127.0.0.1:${PORT}/_specmatic/health"
+}
+
+mock_log_has_port_conflict() {
+  grep -Eqi "Address already in use|BindException|EADDRINUSE|port is already allocated|Ports are not available|bind: address already in use" "${MOCK_LOG}" 2>/dev/null
 }
 
 http_status_code() {
@@ -172,40 +251,62 @@ rm -rf "${SPEC_DIR}/build"
 
 docker_preflight
 
-echo "Starting mock for ${SPEC_FILE}"
-docker run \
-  --rm \
-  --network host \
-  --name "${MOCK_CONTAINER_NAME}" \
-  -v "${SPEC_DIR}:/usr/src/app" \
-  -w /usr/src/app \
-  "${SPECMATIC_DOCKER_IMAGE}" \
-  mock \
-  --lenient \
-  "${SPEC_BASENAME}" >"${MOCK_LOG}" 2>&1 &
-MOCK_PID=$!
+mock_started="false"
+for ((attempt = 1; attempt <= MAX_AUTO_PORT_ATTEMPTS; attempt++)); do
+  pick_port
+  echo "Using Specmatic port: ${PORT}"
+  echo "Starting mock for ${SPEC_FILE}"
 
-deadline=$((SECONDS + STARTUP_TIMEOUT_SECONDS))
-while (( SECONDS < deadline )); do
-  if ! kill -0 "${MOCK_PID}" 2>/dev/null; then
-    echo "Mock exited before becoming healthy." >&2
-    print_log_tail "mock" "${MOCK_LOG}"
-    exit 1
-  fi
+  docker run \
+    --rm \
+    --network host \
+    --name "${MOCK_CONTAINER_NAME}" \
+    -v "${SPEC_DIR}:/usr/src/app" \
+    -w /usr/src/app \
+    "${SPECMATIC_DOCKER_IMAGE}" \
+    mock \
+    --port "${PORT}" \
+    "${SPEC_BASENAME}" \
+    --lenient >"${MOCK_LOG}" 2>&1 &
+  MOCK_PID=$!
 
-  if [[ "$(http_status_code "${HEALTH_URL}")" == "200" ]]; then
-    echo "Mock is healthy."
+  deadline=$((SECONDS + STARTUP_TIMEOUT_SECONDS))
+  while (( SECONDS < deadline )); do
+    if ! kill -0 "${MOCK_PID}" 2>/dev/null; then
+      if [[ "${AUTO_PORT}" == "true" && "${attempt}" -lt "${MAX_AUTO_PORT_ATTEMPTS}" ]] && mock_log_has_port_conflict; then
+        echo "Mock could not bind port ${PORT}; retrying with another port." >&2
+        stop_mock
+        continue 2
+      fi
+
+      echo "Mock exited before becoming healthy." >&2
+      print_log_tail "mock" "${MOCK_LOG}"
+      exit 1
+    fi
+
+    if [[ "$(http_status_code "$(health_url)")" == "200" ]]; then
+      echo "Mock is healthy."
+      mock_started="true"
+      break
+    fi
+
+    sleep 1
+  done
+
+  if [[ "${mock_started}" == "true" ]]; then
     break
   fi
 
-  sleep 1
-done
+  if [[ "${AUTO_PORT}" == "true" && "${attempt}" -lt "${MAX_AUTO_PORT_ATTEMPTS}" ]] && mock_log_has_port_conflict; then
+    echo "Mock did not become healthy on port ${PORT}; retrying with another port." >&2
+    stop_mock
+    continue
+  fi
 
-if [[ "$(http_status_code "${HEALTH_URL}")" != "200" ]]; then
   echo "Mock did not become healthy within ${STARTUP_TIMEOUT_SECONDS} seconds." >&2
   print_log_tail "mock" "${MOCK_LOG}"
   exit 1
-fi
+done
 
 echo "Running loop test for ${SPEC_FILE}"
 if ! docker_run_specmatic test -e "MAX_TEST_REQUEST_COMBINATIONS=${MAX_TEST_REQUEST_COMBINATIONS}" >"${TEST_LOG}" 2>&1; then
