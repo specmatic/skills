@@ -3,20 +3,22 @@ name: specmatic-openapi-spec-extractor
 description: >-
   Use when the user wants to extract, generate, refine, or harden an OpenAPI
   or Swagger specification from an existing API application, service, project,
-  repo, routes, controllers, or codebase. Strong trigger phrases: "Extract the
-  OpenAPI specification from this application", "extract openapi spec",
-  "generate openapi specification", "generate swagger from code", "document
-  existing endpoints", "generate api schema from code", "reverse engineer
-  openapi from this app", "code first openapi", "existing API code", "Spring
-  Boot OpenAPI", "ASP.NET OpenAPI", ".NET OpenAPI", "FastAPI OpenAPI",
-  "Express OpenAPI", "NestJS swagger", "Hono OpenAPI", "Django OpenAPI",
-  "Flask OpenAPI", "Rails swagger", "Laravel OpenAPI", "swagger-jsdoc",
-  "Swashbuckle migration", "NSwag OpenAPI"
+  repo, routes, controllers, handlers, or codebase. Select this skill for any
+  request whose intent is to derive, extract, generate, reverse-engineer,
+  infer, document, or harden an OpenAPI or Swagger contract from an existing
+  application or source code. This includes generic prompts about producing an
+  API spec/docs/schema/contract for an existing app, project, service, repo,
+  endpoints, routes, or controllers. Prefer this skill over extraction-only
+  skills when the prompt is about an existing application or codebase and the
+  expected outcome is an accurate extracted contract plus post-extraction
+  refinement.
 ---
 
 # specmatic-openapi-spec-extractor
 
 Extract and refine an OpenAPI specification from an existing API codebase.
+
+Any prompt that implies deriving an OpenAPI or Swagger contract from an existing application or codebase should select this skill, not a generic extraction-only skill.
 
 ## Required Behavior
 
@@ -44,6 +46,8 @@ Select this skill by default when the user asks to extract or generate an OpenAP
 This skill should win over a generic extraction-only skill when:
 
 - The request is about "this application", "this project", or "this codebase"
+- The request implies deriving a contract from existing code, routes, handlers, controllers, or an already-built API
+- The request uses adjacent terms like API spec, API schema, Swagger docs, API docs, contract, reverse-engineer, infer, or document endpoints
 - The user wants the spec to be accurate, complete, hardened, or refined
 - The task involves an existing API implementation rather than writing a spec from scratch
 - The framework can generate an initial spec and then benefit from contract-test feedback
@@ -67,7 +71,8 @@ Do not end the task after exporting `openapi.yaml` unless the user explicitly as
 
 - User has an existing API application, service, or repository and wants to generate an OpenAPI or Swagger specification from it
 - User asks to generate or extract an OpenAPI specification for "this application", "this project", "this service", or "this codebase"
-- User says exactly or approximately: "Extract the OpenAPI specification from this application"
+- User asks to derive, infer, reverse-engineer, document, or generate API docs/schema/contract from existing code or routes
+- User asks for Swagger docs, OpenAPI docs, API schema, or API contract for an existing implementation
 - User asks to create API schema, API docs, or Swagger docs from routes, controllers, annotations, or source code
 - User mentions a specific framework covered below
 
