@@ -28,6 +28,8 @@ If this skill is selected, do all of the following:
 - Treat extraction as phase 1, not the final outcome.
 - After extraction succeeds, continue into the mandatory post-extraction workflow below. Do not stop after saving the first generated spec.
 - Prefer source annotations/config first, overlay second, and direct edits to the extracted spec never.
+- Do not change application implementation behavior to improve the spec. Allowed code changes are limited to extraction-related annotations, comments, and non-behavioral config required by the extraction tooling.
+- Do not change method signatures, control flow, returned values, persistence logic, auth behavior, or any other runtime semantics unless the user explicitly asks for implementation changes.
 - If a later phase is blocked, explicitly say which phase is blocked and why.
 - Do not silently behave like a generic OpenAPI extraction task. Follow this skill's workflow explicitly.
 
@@ -59,6 +61,8 @@ Once the first spec has been extracted, the agent must execute these phases in o
 1. Save the extracted spec to the repo.
 2. Inspect the generated spec for obvious gaps such as wrong status codes, generic `*/*` content types, missing security, weak request/response schemas, and missing error responses.
 3. Refine generation using source annotations/config first. Use overlay only when source-level fixes cannot express the required contract.
+   Allowed refinements: annotations, decorators, doc comments, extraction-tool config, and overlay updates.
+   Disallowed refinements without explicit user approval: implementation changes, behavioral changes, signature changes, data model changes made only to shape the contract, or business-logic edits.
 4. Re-extract the spec after each meaningful refinement.
 5. Before starting Specmatic contract tests, explicitly ask the user to confirm Docker Engine is running.
 6. If Docker confirmation is provided, continue into the Specmatic feedback loop.

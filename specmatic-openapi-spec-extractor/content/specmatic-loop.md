@@ -67,7 +67,9 @@ Always apply fixes in this order:
 Rules:
 
 - Always attempt source-level fixes first.
+- Source-level fixes for this skill mean extraction-related annotations, decorators, comments, and non-behavioral config only.
 - Use overlay only when source metadata cannot express the required contract.
+- Do not change implementation behavior or method signatures as part of the fix loop unless the user explicitly asks for implementation changes.
 - If a mismatch cannot be fixed via source metadata or overlay, classify it as non-fixable and report it.
 - Do not create spec-rewrite scripts that mutate the generated OpenAPI as a workaround.
 

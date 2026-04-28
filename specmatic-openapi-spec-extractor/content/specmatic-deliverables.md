@@ -105,6 +105,8 @@ Verify all of the following:
 - Do not hand-write an OpenAPI spec when the framework can generate one.
 - Do not edit the extracted OpenAPI file directly for iterative fixes.
 - Do not modify business logic just to make contract tests pass.
+- Do not change implementation behavior, method signatures, returned values, control flow, persistence logic, or auth behavior just to make extraction or contract tests look better.
+- Do not introduce DTO or model changes whose only purpose is to reshape the contract unless the user explicitly approves implementation changes.
 - Do not add spec-rewrite scripts that preprocess generated OpenAPI to bypass mismatches.
 - Do not mask mismatches with overly broad schemas unless the behavior is truly dynamic.
 - Do not assume extraction captured everything; verify auth, error responses, headers, and downstream-dependent fields.
