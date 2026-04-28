@@ -324,47 +324,8 @@ Use this skill when asked to run Specmatic contract tests against a system under
 
 Default behavior:
 - As soon as spec extraction succeeds, immediately start this feedback loop and begin setup.
-- Do not stop after extraction unless the user explicitly asks for extraction-only output.
-
-Before running this loop, check whether Docker Engine is running on the user's machine.
-- Use this readiness sequence:
-
-```bash
-command -v docker >/dev/null 2>&1
-```
-
-- If this fails, treat it as "Docker CLI is not available in this environment", not as "Docker Engine is not running". Stop and ask the agent to prompt the user to make Docker available.
-- If the Docker CLI exists, check daemon availability with retries.
-- Treat exit status as the source of truth. Do not treat stderr warnings from Docker CLI plugins, context helpers, or environment notices as a readiness failure when the command exits `0`.
-- Prefer `docker version --format '{{.Server.Version}}'` as the primary readiness probe because it is lightweight and succeeds when the client can reach the server. Use `docker info` as a fallback for older setups:
-
-```bash
-for attempt in 1 2 3; do
-  if docker version --format '{{.Server.Version}}' >/dev/null 2>&1; then
-    exit 0
-  fi
-  if docker info >/dev/null 2>&1; then
-    exit 0
-  fi
-  sleep 2
-done
-exit 1
-```
-
-- If the retrying check succeeds, proceed directly into the hardening loop without asking the user for permission to start it.
-- If `docker version --format '{{.Server.Version}}'` succeeds, treat Docker as ready even if `docker info` prints warnings.
-- If the Docker CLI exists but both readiness probes still fail after retries, treat it as "Docker Engine or daemon is currently unreachable" and ask the agent to prompt the user to start Docker Engine or fix Docker connectivity before continuing.
-- If a direct shell check in the current environment succeeds, do not tell the user Docker is down. Proceed into the hardening loop immediately.
-- Do not collapse every Docker failure into "Docker Engine is not running". Distinguish CLI-not-found from daemon-unreachable.
-- Do not ask the user to explicitly tell you to start the hardening loop after extraction. Starting the loop is the default behavior.
-- After prompting for a Docker issue, re-run the readiness sequence automatically. If the recheck succeeds, continue the hardening loop automatically without waiting for the user to say "continue".
-
-Use this style of prompt only when the Docker CLI exists but the daemon is still unreachable after retries:
-- "I’ve finished extracting the OpenAPI spec and I’m ready to start the Specmatic hardening loop. Docker Engine does not appear to be running on this machine. Please start Docker Engine, and I’ll continue automatically once it is available."
-
-Use this style of prompt only when the Docker CLI itself is unavailable:
-- "I’ve finished extracting the OpenAPI spec and I’m ready to start the Specmatic hardening loop, but the Docker CLI is not available in this environment. Please make Docker available here, and I’ll continue automatically once the Docker check succeeds."
-
+- Do not stop after extraction.
+- If the feedback loop fails to start due to docker issues, ask user to start docker engine.
 ---
 
 ## Phase 1 — Setup
@@ -456,9 +417,10 @@ Default test settings rule:
 - Always set `specmatic.settings.test.schemaResiliencyTests: all`.
 - Do not add `specmatic.settings.test.maxTestRequestCombinations` to `specmatic.yaml` by default.
 - Add `maxTestRequestCombinations: 1` only after observing that contract tests are taking too long to run.
-- Configure `specmatic.license.path` only if `./specmatic/specmatic-unlimited-license.txt` is actually present.
+- Configure `specmatic.license.path` only if the license is actually present.
 - If the license file is absent, omit `specmatic.license` entirely and let Specmatic use its built-in trial license.
 - Do not fail the workflow only because the enterprise license file is missing.
+- If the tests later fail due to license specific issues, ask user for the license path and set that in the config file.
 
 Fail-fast rule:
 - Treat any config key outside schema as invalid.
