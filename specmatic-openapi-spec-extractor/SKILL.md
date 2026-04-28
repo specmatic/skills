@@ -1,11 +1,40 @@
 ---
 name: specmatic-openapi-spec-extractor
-description: Use when extracting or generating an OpenAPI spec from existing API/Application code. Triggers on "extract OpenAPI", "code first", "generate spec from code", "generate openapi spec from application", "FastAPI OpenAPI", "Spring Boot OpenAPI", "ASP.NET OpenAPI", ".NET OpenAPI", "Express OpenAPI", "swagger-jsdoc", "Swashbuckle migration", "NSwag OpenAPI", "NestJS swagger", "Django OpenAPI", "Flask OpenAPI", "Rails swagger", "Laravel OpenAPI", "existing API code"
+description: Use when the user wants to extract, generate, refine, or harden an OpenAPI or Swagger specification from an existing API application, service, project, repo, routes, controllers, or codebase. Strong trigger phrases: "Extract the OpenAPI specification from this application", "extract openapi spec", "generate openapi specification", "generate swagger from code", "document existing endpoints", "generate api schema from code", "reverse engineer openapi from this app", "code first openapi", "existing API code", "Spring Boot OpenAPI", "ASP.NET OpenAPI", ".NET OpenAPI", "FastAPI OpenAPI", "Express OpenAPI", "NestJS swagger", "Hono OpenAPI", "Django OpenAPI", "Flask OpenAPI", "Rails swagger", "Laravel OpenAPI", "swagger-jsdoc", "Swashbuckle migration", "NSwag OpenAPI"
 ---
 
 # specmatic-openapi-spec-extractor
 
-Extract an OpenAPI specification from an existing API codebase. Covers major frameworks across Python, Java, C#, JavaScript/TypeScript, Ruby, and PHP.
+Extract and refine an OpenAPI specification from an existing API codebase. Covers major frameworks across Python, Java, C#, JavaScript/TypeScript, Ruby, and PHP.
+
+## Required Behavior
+
+If this skill is selected, do all of the following:
+
+- In the first user-facing progress update, explicitly say you are using `specmatic-openapi-spec-extractor`.
+- Treat extraction as phase 1, not the final outcome.
+- After extraction succeeds, continue into post-extraction validation and refinement.
+- Prefer annotation/decorator fixes first, overlay fixes second, and direct edits to the extracted spec never.
+- Do not silently behave like a generic OpenAPI extraction task. Follow this skill's workflow explicitly.
+
+Default execution order:
+
+`announce skill -> detect framework -> extract spec -> validate/refine -> ask for Docker confirmation if Specmatic loop is needed -> run Specmatic feedback loop`
+
+Use this exact style in the first progress update:
+
+- `Using specmatic-openapi-spec-extractor to extract and refine the OpenAPI spec. I’m first identifying the framework and extraction path, then I’ll continue with post-extraction validation.`
+
+## Selection Heuristics
+
+Select this skill by default when the user asks to extract or generate an OpenAPI or Swagger spec from an existing application, even if they do not mention Specmatic, skills, validation, refinement, or overlays.
+
+This skill should win over a generic extraction-only skill when:
+
+- The request is about "this application", "this project", or "this codebase"
+- The user wants the spec to be accurate, complete, hardened, or refined
+- The task involves an existing API implementation rather than writing a spec from scratch
+- The framework can generate an initial spec and then benefit from validation or contract-test feedback
 
 ## Content Guides
 
@@ -26,9 +55,12 @@ Each guide provides detailed setup, schema definition, authentication, and troub
 
 ## When to Use
 
-- User has an existing API and wants to generate an OpenAPI spec from it
+- User has an existing API application, service, or repository and wants to generate an OpenAPI or Swagger specification from it
+- User asks to generate or extract an OpenAPI specification for "this application", "this project", "this service", or "this codebase"
+- User says exactly or approximately: "Extract the OpenAPI specification from this application"
+- User asks to create API schema, API docs, or Swagger docs from routes, controllers, annotations, or source code
 - User mentions a specific framework (FastAPI, Flask, Django, Spring Boot, ASP.NET Core, Express, NestJS, Hono, Rails, Laravel)
-- User says: "extract OpenAPI", "code first", "generate spec from code", "existing API code"
+- User says: "extract OpenAPI", "extract openapi spec", "generate openapi specification", "generate swagger", "create swagger from code", "code first", "generate spec from code", "existing API code"
 
 ## Inputs
 
