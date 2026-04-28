@@ -16,11 +16,7 @@ Use these exact paths and file names everywhere in this workflow.
 
 ## Workflow State Machine
 
-Execute all phases in sequence.
-
-- `Phase 1 -> Phase 2 -> Phase 3 -> Phase 4`
-- At Phase 2, run the phase until all errors are addressed (either fixed or classified as unfixable).
-- At Phase 4, if warnings or errors are detected, ask the user if they want help fixing them.
+Phase 1 -> Phase 2 -> Phase 3 -> Phase 4 validation -> STOP for user approval -> Phase 4 fixes only if explicitly approved
 
 ### Phase 1: Setup log files
 
@@ -32,7 +28,7 @@ Execute all phases in sequence.
 
   ```
 
-### Phase 2: Auto-fix loop
+### Phase 2: Auto-fix obscure errors
 
 1. Run the loop test script against the editable copy.
 2. Immediately after the loop test ends, append a structured entry to `fix-log-<spec-name>-<current-date>.md` with this format:
@@ -53,7 +49,10 @@ Guidelines for addressing errors:
   - `Spec Issue`: the run points to a concrete schema, example, enum, `$ref`, `required`, or constraint defect in the spec.
   - `Specmatic Bug`: the error is unclear (does not identify a concrete spec defect or provide enough information to point directly to where the issue is), or if it appears that Specmatic cannot handle a value / feature in the spec that is perfectly legimiate (e.g. valid regex syntax, valid OpenAPI syntax, etc)
   - Treat any opaque error as a `Specmatic Bug`. "Opaque" means the message does not identify a concrete spec defect or does not provide enough information to fix the spec confidently.
+  - If relaxing or removing a valid constraint is used to make the workflow pass, log it as a `Specmatic Bug`.
   - A status mismatch is not opaque merely because the final summary only shows `R0002`. Before classifying it as `Specmatic Bug`, inspect the raw temp test log around the full request/response transcript. Look both above and below the failed scenario summary. Only classify as opaque if no response body or adjacent transcript contains a concrete contract path or rule violation.
+  - If Specmatic-generated traffic fails against the same specification, classify it as `Specmatic Bug` unless the failing constraint is itself invalid OpenAPI, invalid syntax, or demonstrably conflicts with another schema rule such as enum/example values.
+
 
 - If the issue is classified as a `Specmatic Bug`, log it immediately when first observed in `fix-log-<spec-name>-<current-date>.md`, using this format:
   ```
@@ -115,29 +114,46 @@ Guidelines for addressing errors:
 
 ### Phase 3: Report on auto-fix phase
 
-1. Prepare a console report for the user. Do not mention mechanics such as test execution details, mock startup details, or pass/fail runtime chatter. Instead, the concluding message should contain the following details:
-  - If you had to fix any issues to get the loop test to pass, report each fix with the following details:
-    - where the fix was applied
-    - what exactly was fixed
-    - why it had to be fixed
-    - whether it is an issue in the spec, or a bug in Specmatic
-2. If the `fix-log-<spec-name>-<current-date>.md` file contains any "Specmatic Bug" entries
-  - inform the user that you found some Specmatic issues to report to the Specmatic team
-  - ask them to send the following files to the team:
-    - the original spec file
-    - `<spec-name>-updated.<ext>` (the edited spec file)
-    - the `fix-log-<spec-name>-<current-date>.md` file
-3. Report the following summary statistics:
-  - files created
-  - files modified
-  - total loop runs executed
-  - total fixes applied
+Prepare a console report for the user. Do not mention mechanics such as test execution details, mock startup details, or pass/fail runtime chatter.
+
+1. Read fix log at `fix-log-<spec-name>-<current-date>.md` in order to identify Specmatic bugs and applied fixes. Do not depend on memory.
+2. If it contains `Classification**: Specmatic Bug`, the final response MUST include a `Specmatic bugs:` section.
+3. If it contains `Fix applied`, the final response MUST include a `Fixes applied:` section.
+4. Specmatic bugs section should be followed by the Fixes applied section if both exist, else just the one that exists should be printed.
+5. If any Specmatic bugs exist, the final response MUST say to send:
+    - original spec
+    - updated spec
+    - fix log
+6. Do not substitute validation/test summaries for these sections.
+
+The format for the Specmatic bugs section is:
+
+```
+Specmatic bugs:
+- <bug title>: <brief description of the bug>
+- <bug title>: <brief description of the bug>
+
+Please send the following files to the Specmatic team for analysis:
+- <original spec file>
+- <updated spec file>
+- <fix log file>
+```
+
+The format for the list of fixes applied is:
+
+```
+Fixes applied:
+- <item fixed>: <brief description of the fix>
+- <item fixed>: <brief description of the fix>
+```
 
 ### Phase 4: Address load time errors and warnings
 
+Note: Even if the user asks to fix the spec, they really want control over what gets fixed, and how the fix is done. So Phase 4 validation may be run automatically, but Phase 4 fixes must never be applied automatically. 
+
 1. Run the validate command on the `<spec-name>-updated.<ext>` spec.
 2. If there are no errors or warnings, report to the user that the spec is now valid and can be used for testing and mocking with Specmatic, and end the process.
-3. If there are errors or warnings, do NOT fix any errors or warnings. First list them out (not just the ids, include the descriptions if Specmatic provided it), and ask the user if they want to address spec defects on the `-updated` copy.
+3. If there are errors or warnings, do NOT fix any errors or warnings. Do not infer approval from the original request, or from prior sessions. Only proceed if the next user message explicitly approves fixing the listed Phase 4 issues or requests specific fixes. Instead, list them out (not just the ids, include the descriptions if Specmatic provided it), and ask the user if they want to address spec defects on the `-updated` copy.
 4. For each load-time error or warning that the users wants to address:
   - Classify and log the error following the same classification and logging contract as in Phase 2.
 6. Apply allowed fixes to the `-updated` copy based on the error messages and classification, following the same guidelines for allowed fixes as in Phase 2.
