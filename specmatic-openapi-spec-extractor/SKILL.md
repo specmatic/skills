@@ -24,13 +24,14 @@ If this skill is selected, do all of the following:
 
 - In the first user-facing progress update, explicitly say you are using `specmatic-openapi-spec-extractor`.
 - Treat extraction as phase 1, not the final outcome.
-- After extraction succeeds, continue into post-extraction validation and refinement.
+- After extraction succeeds, continue into the mandatory post-extraction workflow below. Do not stop after saving the first generated spec.
 - Prefer annotation/decorator fixes first, overlay fixes second, and direct edits to the extracted spec never.
 - Do not silently behave like a generic OpenAPI extraction task. Follow this skill's workflow explicitly.
+- If a later phase is blocked, explicitly say which phase is blocked and why.
 
 Default execution order:
 
-`announce skill -> detect framework -> extract spec -> validate/refine -> ask for Docker confirmation if Specmatic loop is needed -> run Specmatic feedback loop`
+`announce skill -> detect framework -> extract spec -> save spec -> inspect gaps -> refine -> ask for Docker confirmation -> run Specmatic feedback loop`
 
 Use this exact style in the first progress update:
 
@@ -46,6 +47,21 @@ This skill should win over a generic extraction-only skill when:
 - The user wants the spec to be accurate, complete, hardened, or refined
 - The task involves an existing API implementation rather than writing a spec from scratch
 - The framework can generate an initial spec and then benefit from validation or contract-test feedback
+
+## Mandatory Post-Extraction Workflow
+
+Once the first spec has been extracted, the agent must execute these phases in order:
+
+1. Save the extracted spec to the repo.
+2. Inspect the generated spec for obvious gaps such as wrong status codes, generic `*/*` content types, missing security, weak request/response schemas, and missing error responses.
+3. Refine generation using source annotations/config first. Use overlay only when source-level fixes cannot express the required contract.
+4. Re-extract the spec after each meaningful refinement.
+5. Before starting Specmatic contract tests, explicitly ask the user to confirm Docker Engine is running.
+6. If Docker confirmation is provided, continue into the Specmatic feedback loop.
+7. If Docker confirmation is not yet available, stop only after clearly reporting that extraction and refinement are done and the next blocked step is the Specmatic loop.
+
+Do not treat annotation-only cleanup as the full post-extraction workflow.
+Do not end the task after exporting `openapi.yaml` unless the user explicitly asks for extraction only.
 
 ## Content Guides
 
@@ -369,6 +385,7 @@ Default behavior:
 - As soon as spec extraction succeeds, immediately start this feedback loop and begin setup.
 - Do not stop after extraction.
 - If the feedback loop fails to start due to docker issues, ask user to start docker engine.
+- Before entering the Docker-dependent loop, the agent should already have completed extraction, saved the spec, and completed the refinement phase above.
 ---
 
 ## Phase 1 — Setup
