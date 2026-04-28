@@ -1,6 +1,6 @@
 ---
 name: specmatic-openapi-spec-extractor
-description: Use when extracting or generating an OpenAPI spec from existing API code. Triggers on "extract OpenAPI", "code first", "generate spec from code", "FastAPI OpenAPI", "Spring Boot OpenAPI", "ASP.NET OpenAPI", ".NET OpenAPI", "Express OpenAPI", "swagger-jsdoc", "Swashbuckle migration", "NSwag OpenAPI", "NestJS swagger", "Django OpenAPI", "Flask OpenAPI", "Rails swagger", "Laravel OpenAPI", "existing API code"
+description: Use when extracting or generating an OpenAPI spec from existing API/Application code. Triggers on "extract OpenAPI", "code first", "generate spec from code", "generate openapi spec from application", "FastAPI OpenAPI", "Spring Boot OpenAPI", "ASP.NET OpenAPI", ".NET OpenAPI", "Express OpenAPI", "swagger-jsdoc", "Swashbuckle migration", "NSwag OpenAPI", "NestJS swagger", "Django OpenAPI", "Flask OpenAPI", "Rails swagger", "Laravel OpenAPI", "existing API code"
 ---
 
 # specmatic-openapi-spec-extractor
