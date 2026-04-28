@@ -476,7 +476,7 @@ specmatic:
 Default test settings rule:
 - Always set `specmatic.settings.test.schemaResiliencyTests: all`.
 - Do not add `specmatic.settings.test.maxTestRequestCombinations` to `specmatic.yaml` by default.
-- Add `maxTestRequestCombinations: 1` only after observing that contract tests are taking too long to run.
+- Add `maxTestRequestCombinations` only after observing that too many contract tests are being generated or the suite is taking too long to run.
 - Configure `specmatic.license.path` only if the license is actually present.
 - If the license file is absent, omit `specmatic.license` entirely and let Specmatic use its built-in trial license.
 - Do not fail the workflow only because the enterprise license file is missing.
@@ -616,9 +616,9 @@ Do not test all APIs at once.
 
 ### Runtime throttle rule for long runs
 
-If batch tests are too slow:
-1. Set `specmatic.settings.test.maxTestRequestCombinations: 1`
-2. Use this only as a runtime throttle after confirming the suite is taking too long to run.
+If batch tests are too slow or too many test combinations are being generated:
+1. Add `specmatic.settings.test.maxTestRequestCombinations` only after confirming the suite needs throttling.
+2. Use `1` as a strong throttle when needed.
 3. Note this is temporary and should be removed later for broader coverage.
 
 ### Batch progress reporting format
@@ -670,8 +670,8 @@ PRE_TEST_SETUP_CMD="${PRE_TEST_SETUP_CMD:-}"
 
 docker pull specmatic/enterprise:latest
 
-# Optional runtime throttle for slow suites
-# Add this only after you have observed that the suite is taking too long:
+# Optional runtime throttle for slow or overly large suites
+# Add this only after you have observed that too many test combinations are being generated:
 # yq -i '.specmatic.settings.test.maxTestRequestCombinations = 1' specmatic.yaml
 
 # Optional deterministic setup hook (DB seed + example refresh)
