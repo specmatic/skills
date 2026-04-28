@@ -1,6 +1,17 @@
 ---
 name: specmatic-openapi-spec-extractor
-description: Use when the user wants to extract, generate, refine, or harden an OpenAPI or Swagger specification from an existing API application, service, project, repo, routes, controllers, or codebase. Strong trigger phrases: "Extract the OpenAPI specification from this application", "extract openapi spec", "generate openapi specification", "generate swagger from code", "document existing endpoints", "generate api schema from code", "reverse engineer openapi from this app", "code first openapi", "existing API code", "Spring Boot OpenAPI", "ASP.NET OpenAPI", ".NET OpenAPI", "FastAPI OpenAPI", "Express OpenAPI", "NestJS swagger", "Hono OpenAPI", "Django OpenAPI", "Flask OpenAPI", "Rails swagger", "Laravel OpenAPI", "swagger-jsdoc", "Swashbuckle migration", "NSwag OpenAPI"
+description: >-
+  Use when the user wants to extract, generate, refine, or harden an OpenAPI
+  or Swagger specification from an existing API application, service, project,
+  repo, routes, controllers, or codebase. Strong trigger phrases: "Extract the
+  OpenAPI specification from this application", "extract openapi spec",
+  "generate openapi specification", "generate swagger from code", "document
+  existing endpoints", "generate api schema from code", "reverse engineer
+  openapi from this app", "code first openapi", "existing API code", "Spring
+  Boot OpenAPI", "ASP.NET OpenAPI", ".NET OpenAPI", "FastAPI OpenAPI",
+  "Express OpenAPI", "NestJS swagger", "Hono OpenAPI", "Django OpenAPI",
+  "Flask OpenAPI", "Rails swagger", "Laravel OpenAPI", "swagger-jsdoc",
+  "Swashbuckle migration", "NSwag OpenAPI"
 ---
 
 # specmatic-openapi-spec-extractor
