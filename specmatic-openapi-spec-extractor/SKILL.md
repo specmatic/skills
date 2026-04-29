@@ -30,6 +30,7 @@ If this skill is selected, do all of the following:
 - If the required extraction tool/integration is missing from the codebase, add the minimum non-behavioral framework-specific integration needed so the framework can generate/export the spec, then extract from that generated output.
 - "Use if available" is not acceptable for supported frameworks. For supported frameworks, the agent must make the extraction path available in the project unless the user explicitly forbids code changes.
 - After extraction succeeds, continue into the mandatory post-extraction workflow below. Do not stop after saving the first generated spec.
+- Always prepare the final runnable contract-test assets for the user once extraction and refinement are complete, even if the live Docker-dependent loop cannot run yet.
 - Prefer source annotations/config first, overlay second, and direct edits to the extracted spec never.
 - Do not change application implementation behavior to improve the spec. Allowed code changes are limited to extraction-related annotations, comments, and non-behavioral config required by the extraction tooling.
 - Do not change method signatures, control flow, returned values, persistence logic, auth behavior, or any other runtime semantics unless the user explicitly asks for implementation changes.
@@ -39,7 +40,7 @@ If this skill is selected, do all of the following:
 
 Default execution order:
 
-`announce skill -> identify framework -> open one framework guide -> integrate extraction path if missing -> extract spec -> save spec -> inspect gaps -> refine -> re-extract -> run Docker readiness gate -> run Specmatic feedback loop`
+`announce skill -> identify framework -> open one framework guide -> integrate extraction path if missing -> extract spec -> save spec -> inspect gaps -> refine -> re-extract -> run Docker readiness gate -> run Specmatic feedback loop -> prepare final runnable deliverables`
 
 Use this exact style in the first progress update:
 
@@ -72,7 +73,8 @@ Once the first spec has been extracted, the agent must execute these phases in o
 6. Re-extract the spec after each meaningful refinement.
 7. Before starting Specmatic contract tests, perform the Docker readiness workflow defined in the Specmatic references.
 8. If Docker is available, continue automatically into the Specmatic feedback loop using the documented `docker pull`, `docker run`, validation, and test commands from this skill.
-9. If Docker is unavailable, stop only after clearly reporting that extraction and refinement are done and the next blocked step is the Specmatic loop.
+9. Prepare the final deliverables from this skill, including `run_contract_tests.sh` and `CONTRACT_TESTS_README.md`, regardless of whether deterministic data setup is needed.
+10. If Docker is unavailable, stop only after clearly reporting that extraction and refinement are done, the runnable script and README have been prepared, and the next blocked step is the live Specmatic loop.
 
 Do not treat annotation-only cleanup as the full post-extraction workflow.
 Do not end the task after exporting `openapi.yaml` unless the user explicitly asks for extraction only.
@@ -101,6 +103,8 @@ Do not claim the spec was "extracted" if the file was primarily authored by hand
 |--------|-------------|
 | OpenAPI spec | Extracted JSON or YAML contract |
 | Refined source metadata | Annotation/config updates used to improve regenerated output |
+| Contract test runner | Runnable `run_contract_tests.sh` for the full suite, with optional setup hook |
+| Contract test README | `CONTRACT_TESTS_README.md` describing how to run the generated script |
 
 ## Prerequisites
 

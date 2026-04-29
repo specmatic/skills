@@ -22,6 +22,7 @@ Use this exact style:
 If Docker is not confirmed yet:
 
 - Stop after reporting that extraction and refinement are done
+- Still prepare the final runnable assets from this skill, including `run_contract_tests.sh` and `CONTRACT_TESTS_README.md`
 - State that the next blocked step is the Specmatic feedback loop
 
 ## Default Behavior

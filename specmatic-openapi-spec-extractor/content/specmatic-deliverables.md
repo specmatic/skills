@@ -10,6 +10,8 @@ At the end of the workflow, prepare:
 - a `CONTRACT_TESTS_README.md`
 - a final acceptance summary covering determinism, batching, and report generation
 
+These deliverables are mandatory even when the application does not need any seed/setup step and even when Docker is not currently available to run the live Specmatic loop. In those cases, still generate the script and README with the setup hook left optional.
+
 Execution rule:
 - The generated script and the live hardening workflow must run Specmatic through the documented shell/Docker commands in this skill.
 - Do not switch to Specmatic MCP execution in place of those commands.
@@ -56,7 +58,9 @@ echo "Done. HTML report: ./build/reports/specmatic/html/index.html"
 Rules:
 
 - The script must run the full suite without `--filter`.
+- The script must always be generated, even for simple applications with no database, fixtures, or in-memory seed flow.
 - The script may include an optional deterministic setup hook.
+- For simple applications, leave `PRE_TEST_SETUP_CMD` empty by default and do not invent a fake setup step.
 - Do not hard-code `maxTestRequestCombinations` into the config by default.
 
 ## `CONTRACT_TESTS_README.md`
@@ -67,6 +71,7 @@ Document:
 - required inputs and files: `specmatic.yaml`, extracted specs, examples, running SUT, optional license file
 - how to set `SUT_PORT`
 - how to pass deterministic setup via `PRE_TEST_SETUP_CMD`
+- that `PRE_TEST_SETUP_CMD` is optional and should remain unset for applications that do not require pre-test setup
 - where and when to tune `specmatic.settings.test.maxTestRequestCombinations`
 - how to switch from full runs to filtered runs when needed
 - known non-fixable failures
