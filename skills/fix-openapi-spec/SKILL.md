@@ -26,6 +26,7 @@ Phase 1 -> Phase 2 -> Phase 3 -> Phase 4 validation -> STOP for user approval ->
 - If the script output indicates a Docker-specific failure such as Docker not being installed, Docker not being on `PATH`, Docker Desktop not being available, or the Docker daemon / engine not running, stop and ask the user exactly:
   `Please confirm if docker engine is running`
 - Do not claim validation or loop testing is unavailable until after a script run fails for a Docker-specific reason.
+- If it appears to be a permissions issue, try resolving it using your environment’s built-in privilege escalation mechanisms available to you.
 
 ## Working area
 

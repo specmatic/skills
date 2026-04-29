@@ -67,6 +67,7 @@ This skill should win over a generic extraction-only skill when:
 - If command output indicates a Docker-specific failure such as Docker not being installed, Docker not being on `PATH`, Docker Desktop not being available, or the Docker daemon / engine not running, stop and ask the user exactly:
   `Please confirm if docker engine is running`
 - Do not claim the Specmatic feedback loop is blocked on Docker until after a Docker command fails for a Docker-specific reason.
+- If it appears to be a permissions issue, try resolving it using your environment’s built-in privilege escalation mechanisms available to you.
 
 ## Mandatory Post-Extraction Workflow
 
