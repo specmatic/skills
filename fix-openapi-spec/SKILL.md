@@ -18,6 +18,10 @@ Use these exact paths and file names everywhere in this workflow.
 
 Phase 1 -> Phase 2 -> Phase 3 -> Phase 4 validation -> STOP for user approval -> Phase 4 fixes only if explicitly approved
 
+## Working area
+
+Ignore any old test files or log files that existed before this conversation. You'll work with the output of the relevant commands as per the workflow state machine.
+
 ### Phase 1: Setup log files
 
 1. Create a copy of the input spec path for edits named `<spec-name>-updated.<ext>` in the same directory as the source spec.
