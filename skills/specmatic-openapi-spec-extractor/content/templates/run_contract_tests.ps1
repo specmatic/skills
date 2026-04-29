@@ -87,7 +87,7 @@ if ($PreTestSetupCommand) {
 }
 
 $ValidateArgs = $DockerArgs + @(
-    "-v", "${SpecmaticDir}:/usr/src/app/specmatic",
+    "-v", "${RepoRoot}:/usr/src/app",
     "-w", "/usr/src/app"
 )
 
@@ -105,8 +105,7 @@ if ($LicenseFileName) {
 
 $ValidateArgs += @(
     $SpecmaticDockerImage,
-    "examples", "validate",
-    "--spec-file", "specmatic/<your-openapi-file.yaml>"
+    "validate"
 )
 & docker @ValidateArgs
 

@@ -78,7 +78,7 @@ fi
 
 VALIDATE_ARGS=(
   "${DOCKER_ARGS[@]}"
-  -v "${SPECMATIC_DIR}:/usr/src/app/specmatic"
+  -v "${REPO_ROOT}:/usr/src/app"
   -w /usr/src/app
 )
 
@@ -97,8 +97,7 @@ fi
 
 docker "${VALIDATE_ARGS[@]}" \
   "${SPECMATIC_DOCKER_IMAGE}" \
-  examples validate \
-  --spec-file "specmatic/<your-openapi-file.yaml>"
+  validate
 
 docker "${TEST_ARGS[@]}" \
   "${SPECMATIC_DOCKER_IMAGE}" \

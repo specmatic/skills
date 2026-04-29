@@ -6,7 +6,7 @@ Use this guide when preparing `specmatic.yaml`, overlays, external examples, or 
 
 Follow this sequence:
 
-`pull image -> create schema-valid config -> configure examples/overlay -> add deterministic setup -> validate examples`
+`pull image -> create schema-valid config -> configure examples/overlay -> add deterministic setup -> run validate`
 
 ## Pull Image
 
@@ -157,16 +157,16 @@ Rules:
 - Regenerate or update examples for each batch so payloads match the deterministic data for that run.
 - Do not add examples for `400` scenarios. Let Specmatic generate invalid-request coverage through schema resiliency tests.
 
-Validate external examples before running tests.
+Run `specmatic validate` before running tests so Specmatic validates the discovered specifications and examples together from the mounted workspace.
 
 macOS:
 
 ```bash
 docker run --rm \
-  -v "$(pwd)/specmatic:/usr/src/app/specmatic" \
+  -v "$(pwd):/usr/src/app" \
   -v "$(pwd)/.specmatic:/usr/src/app/.specmatic" \
-  specmatic/enterprise:latest examples validate \
-  --spec-file "specmatic/<your-openapi-file.yaml>"
+  -w /usr/src/app \
+  specmatic/enterprise:latest validate
 ```
 
 Linux:
@@ -176,43 +176,8 @@ docker run --rm \
   --add-host host.docker.internal:host-gateway \
   -v "$(pwd):/usr/src/app" \
   -v "$(pwd)/.specmatic:/usr/src/app/.specmatic" \
-  specmatic/enterprise:latest examples validate \
-  --spec-file "specmatic/<your-openapi-file.yaml>"
-```
-
-Windows PowerShell:
-
-```powershell
-docker run --rm `
-  -v "${PWD}/specmatic:/usr/src/app/specmatic" `
-  -v "${PWD}/.specmatic:/usr/src/app/.specmatic" `
-  specmatic/enterprise:latest examples validate `
-  --spec-file "specmatic/<your-openapi-file.yaml>"
-```
-
-If examples are in non-default locations.
-
-macOS:
-
-```bash
-docker run --rm \
-  -v "$(pwd):/usr/src/app" \
-  -v "$(pwd)/.specmatic:/usr/src/app/.specmatic" \
-  specmatic/enterprise:latest examples validate \
-  --spec-file "specmatic/<your-openapi-file.yaml>" \
-  --examples-dir "<custom-examples-dir>"
-```
-
-Linux:
-
-```bash
-docker run --rm \
-  --add-host host.docker.internal:host-gateway \
-  -v "$(pwd):/usr/src/app" \
-  -v "$(pwd)/.specmatic:/usr/src/app/.specmatic" \
-  specmatic/enterprise:latest examples validate \
-  --spec-file "specmatic/<your-openapi-file.yaml>" \
-  --examples-dir "<custom-examples-dir>"
+  -w /usr/src/app \
+  specmatic/enterprise:latest validate
 ```
 
 Windows PowerShell:
@@ -221,10 +186,11 @@ Windows PowerShell:
 docker run --rm `
   -v "${PWD}:/usr/src/app" `
   -v "${PWD}/.specmatic:/usr/src/app/.specmatic" `
-  specmatic/enterprise:latest examples validate `
-  --spec-file "specmatic/<your-openapi-file.yaml>" `
-  --examples-dir "<custom-examples-dir>"
+  -w /usr/src/app `
+  specmatic/enterprise:latest validate
 ```
+
+If examples are in non-default locations, ensure `specmatic.yaml` references those directories correctly before running `validate`. The same `validate` command should still be used; do not switch back to `examples validate`.
 
 Full contract test command.
 

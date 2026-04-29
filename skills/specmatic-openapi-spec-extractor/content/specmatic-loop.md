@@ -36,10 +36,10 @@ Rules:
 
 Follow this sequence strictly:
 
-`prepare Specmatic setup -> validate examples -> run targeted tests -> fix mismatches -> repeat per batch -> final full run`
+`prepare Specmatic setup -> run validate -> run targeted tests -> fix mismatches -> repeat per batch -> final full run`
 
 Execution rule:
-- `prepare Specmatic setup`, `validate examples`, `run targeted tests`, and `final full run` mean executing the documented `docker pull`, `docker run`, and shell commands from this skill.
+- `prepare Specmatic setup`, `run validate`, `run targeted tests`, and `final full run` mean executing the documented `docker pull`, `docker run`, and shell commands from this skill.
 - Do not replace those steps with Specmatic MCP calls.
 - Use `host.docker.internal` as the supported default hostname for the host-run SUT.
 - On Linux, add `--add-host host.docker.internal:host-gateway` to Specmatic `docker run` commands.

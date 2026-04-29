@@ -84,7 +84,7 @@ Verify all of the following:
 
 4. Script contract
 - `run_contract_tests.sh` and `run_contract_tests.ps1` run the full suite in one command
-- they validate examples, run tests, and point to the report output
+- they run `specmatic validate`, run tests, and point to the report output
 - neither script uses `--network host`
 - Linux runner adds `--add-host host.docker.internal:host-gateway`
 - if a license is discovered, the runner copies it into `./.specmatic/`, mounts it into Docker, and `specmatic.yaml` targets `/usr/src/app/.specmatic/<license-file-name>`
