@@ -33,6 +33,7 @@ If this skill is selected, do all of the following:
 - Prefer source annotations/config first, overlay second, and direct edits to the extracted spec never.
 - Do not change application implementation behavior to improve the spec. Allowed code changes are limited to extraction-related annotations, comments, and non-behavioral config required by the extraction tooling.
 - Do not change method signatures, control flow, returned values, persistence logic, auth behavior, or any other runtime semantics unless the user explicitly asks for implementation changes.
+- When running Specmatic validation, examples checks, stubs, or contract tests, use only the shell/Docker commands documented by this skill. Do not use Specmatic MCP tools or any alternate Specmatic execution path while this skill is active.
 - If a later phase is blocked, explicitly say which phase is blocked and why.
 - Do not silently behave like a generic OpenAPI extraction task. Follow this skill's workflow explicitly.
 
@@ -70,7 +71,7 @@ Once the first spec has been extracted, the agent must execute these phases in o
    Disallowed refinements without explicit user approval: implementation changes, behavioral changes, signature changes, data model changes made only to shape the contract, or business-logic edits.
 6. Re-extract the spec after each meaningful refinement.
 7. Before starting Specmatic contract tests, perform the Docker readiness workflow defined in the Specmatic references.
-8. If Docker is available, continue automatically into the Specmatic feedback loop.
+8. If Docker is available, continue automatically into the Specmatic feedback loop using the documented `docker pull`, `docker run`, validation, and test commands from this skill.
 9. If Docker is unavailable, stop only after clearly reporting that extraction and refinement are done and the next blocked step is the Specmatic loop.
 
 Do not treat annotation-only cleanup as the full post-extraction workflow.

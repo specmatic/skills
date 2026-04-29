@@ -16,6 +16,10 @@ Always pull the latest image before starting Specmatic contract tests or stubs:
 docker pull specmatic/enterprise:latest
 ```
 
+Execution rule:
+- Use shell/Docker commands exactly as documented in this skill for validation, stubs, and test execution.
+- Do not use Specmatic MCP tools as a substitute for these commands.
+
 ## `specmatic.yaml` Shape
 
 Schema reference:

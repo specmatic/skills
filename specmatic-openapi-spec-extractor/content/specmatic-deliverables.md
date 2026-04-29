@@ -10,6 +10,10 @@ At the end of the workflow, prepare:
 - a `CONTRACT_TESTS_README.md`
 - a final acceptance summary covering determinism, batching, and report generation
 
+Execution rule:
+- The generated script and the live hardening workflow must run Specmatic through the documented shell/Docker commands in this skill.
+- Do not switch to Specmatic MCP execution in place of those commands.
+
 ## `run_contract_tests.sh`
 
 The final script should run the full suite in one go with no batch filters.

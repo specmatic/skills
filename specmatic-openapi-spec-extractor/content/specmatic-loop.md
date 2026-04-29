@@ -29,12 +29,18 @@ If Docker is not confirmed yet:
 - As soon as extraction and initial refinement succeed, move toward the Specmatic loop.
 - Do not stop after extraction unless the user explicitly asked for extraction-only output.
 - Do not enter the Docker-dependent loop before the Docker confirmation above.
+- Run the Specmatic loop only through the shell/Docker commands documented in this skill.
+- Do not use Specmatic MCP tools or any alternate Specmatic integration when this skill is active.
 
 ## Loop Sequence
 
 Follow this sequence strictly:
 
 `confirm Docker -> prepare Specmatic setup -> validate examples -> run targeted tests -> fix mismatches -> repeat per batch -> final full run`
+
+Execution rule:
+- `prepare Specmatic setup`, `validate examples`, `run targeted tests`, and `final full run` mean executing the documented `docker pull`, `docker run`, and shell commands from this skill.
+- Do not replace those steps with Specmatic MCP calls.
 
 ## Batch Strategy
 
