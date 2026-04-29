@@ -2,8 +2,6 @@
 
 set -euo pipefail
 
-export VERSION=2.43.1
-
 SPECMATIC_ENTERPRISE_DOCKER_IMAGE="${SPECMATIC_ENTERPRISE_DOCKER_IMAGE:-specmatic/enterprise:latest}"
 
 usage() {

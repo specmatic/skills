@@ -2,8 +2,6 @@
 
 set -euo pipefail
 
-export VERSION=2.43.1
-
 SPECMATIC_DOCKER_IMAGE="${SPECMATIC_DOCKER_IMAGE:-specmatic/specmatic:latest}"
 STARTUP_TIMEOUT_SECONDS=10
 MAX_AUTO_PORT_ATTEMPTS=10
