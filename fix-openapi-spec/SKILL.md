@@ -18,6 +18,15 @@ Use these exact paths and file names everywhere in this workflow.
 
 Phase 1 -> Phase 2 -> Phase 3 -> Phase 4 validation -> STOP for user approval -> Phase 4 fixes only if explicitly approved
 
+## Docker Execution Rule
+
+- Assume Docker is available and the Docker engine is running.
+- Do not ask the user about Docker availability before attempting `scripts/run_loop_test.sh`, `scripts/run_loop_test.ps1`, `scripts/validate_spec.sh`, or `scripts/validate_spec.ps1`.
+- Run the relevant script first.
+- If the script output indicates a Docker-specific failure such as Docker not being installed, Docker not being on `PATH`, Docker Desktop not being available, or the Docker daemon / engine not running, stop and ask the user exactly:
+  `Please confirm if docker engine is running`
+- Do not claim validation or loop testing is unavailable until after a script run fails for a Docker-specific reason.
+
 ## Working area
 
 Ignore any old test files or log files that existed before this conversation. You'll work with the output of the relevant commands as per the workflow state machine.
@@ -41,7 +50,7 @@ Ignore any old test files or log files that existed before this conversation. Yo
   **Timestamp**: <timestamp>
   **Action**: Loop test run
   **Result**: [pass|fail] - <brief description of the result>
-  
+
   ```
 3. If the loop test passes, go to step 5, the final check. All failed tests are considered "must-fix" errors.
 4. If the loop test fails, attempt to fix one of the errors following the guidelines for addressing errors, and then go back to step 1.
@@ -111,7 +120,7 @@ Guidelines for addressing errors:
 - When logging a failed loop run, include the most specific inner contract error found in the response body. Do not log only the outer status mismatch if the response body contains a deeper rule violation.
 
   For example, log:
-  `REQUEST.QUERY.path.to.something <error>` or `RESPONSE.BODY.path.to.something <error>` or 
+  `REQUEST.QUERY.path.to.something <error>` or `RESPONSE.BODY.path.to.something <error>` or
 
   instead of:
   `confirm-payment-source returned 400 instead of 200`.
@@ -153,7 +162,7 @@ Fixes applied:
 
 ### Phase 4: Address load time errors and warnings
 
-Note: Even if the user asks to fix the spec, they really want control over what gets fixed, and how the fix is done. So Phase 4 validation may be run automatically, but Phase 4 fixes must never be applied automatically. 
+Note: Even if the user asks to fix the spec, they really want control over what gets fixed, and how the fix is done. So Phase 4 validation may be run automatically, but Phase 4 fixes must never be applied automatically.
 
 1. Run the validate command on the `<spec-name>-updated.<ext>` spec.
 2. If there are no errors or warnings, report to the user that the spec is now valid and can be used for testing and mocking with Specmatic, and end the process.
