@@ -2,6 +2,11 @@
 
 Detailed guide for extracting OpenAPI specs from Laravel applications using L5-Swagger or Scramble.
 
+Framework-native rule:
+- Use a Laravel-native extraction tool as the required path, preferring Scramble and otherwise the framework tool already chosen for the repo.
+- If the project is not yet integrated with the selected Laravel OpenAPI package, add the minimum non-behavioral integration required, then extract from that generated output.
+- Do not bypass the Laravel extraction package by hand-authoring the primary spec.
+
 ## Option 1: Scramble (Recommended)
 
 Modern, automatic OpenAPI generation for Laravel.

@@ -2,6 +2,11 @@
 
 Detailed guide for extracting OpenAPI specs from Django REST Framework using drf-spectacular.
 
+Framework-native rule:
+- Use `drf-spectacular` as the required extraction path for Django REST Framework.
+- If the project is not yet configured for `drf-spectacular`, add the minimum non-behavioral integration required in settings/URLs/views, then extract with the CLI.
+- Do not bypass `drf-spectacular` by hand-authoring the main spec.
+
 ## Installation
 
 ```bash

@@ -2,6 +2,11 @@
 
 Detailed guide for extracting OpenAPI specs from Flask applications using flask-openapi3 or apispec.
 
+Framework-native rule:
+- Use a Flask-native OpenAPI integration to generate the spec.
+- If the project is not already wired for `flask-openapi3` or `apispec`, add the minimum non-behavioral integration required, then extract from that generated output.
+- Do not hand-author the primary `openapi.yaml` as a substitute for framework-generated extraction.
+
 ## Option 1: flask-openapi3 (Recommended)
 
 ### Installation

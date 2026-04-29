@@ -2,6 +2,11 @@
 
 Detailed guide for extracting OpenAPI specs from Hono applications using @hono/zod-openapi.
 
+Framework-native rule:
+- Use `@hono/zod-openapi` as the required extraction path for Hono.
+- If the project is not yet using the OpenAPI-capable Hono wrappers or export wiring, add the minimum non-behavioral integration required, then extract the generated document.
+- Do not replace Hono's generated output with a hand-written primary spec.
+
 ## Installation
 
 ```bash

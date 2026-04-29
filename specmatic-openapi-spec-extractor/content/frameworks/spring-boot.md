@@ -2,6 +2,11 @@
 
 Detailed guide for extracting OpenAPI specs from Spring Boot using springdoc-openapi.
 
+Framework-native rule:
+- Use `springdoc-openapi` as the required extraction path for Spring Boot.
+- If the project does not yet expose Springdoc docs, add the minimum non-behavioral dependency/configuration needed, then extract from the generated endpoint.
+- Do not replace Springdoc-based extraction with a hand-written primary spec.
+
 ## Installation
 
 ### Maven

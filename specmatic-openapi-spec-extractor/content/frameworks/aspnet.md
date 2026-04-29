@@ -2,6 +2,11 @@
 
 This guide covers extracting an OpenAPI spec from existing ASP.NET Core APIs, with support for modern built-in OpenAPI, legacy Swashbuckle setups, and NSwag.
 
+Framework-native rule:
+- Use the framework-native OpenAPI stack required by the target app: built-in OpenAPI for .NET 9+, Swashbuckle for .NET 8, or existing NSwag projects where already present.
+- If the required OpenAPI package/endpoint/config is missing, add the minimum non-behavioral integration required, then extract from the generated endpoint.
+- Do not substitute a manually authored primary spec for ASP.NET Core.
+
 ## Choose by Target Framework
 
 | Target framework | Primary extraction path | Typical endpoint |

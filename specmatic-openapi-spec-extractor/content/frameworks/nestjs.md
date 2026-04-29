@@ -2,6 +2,11 @@
 
 Detailed guide for extracting OpenAPI specs from NestJS applications using @nestjs/swagger.
 
+Framework-native rule:
+- Use `@nestjs/swagger` as the required extraction path for NestJS.
+- If Swagger setup or an export script is missing, add the minimum non-behavioral integration required, then extract from the generated document.
+- Do not hand-author the main spec instead of using NestJS Swagger generation.
+
 ## Installation
 
 ```bash

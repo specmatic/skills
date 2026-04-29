@@ -2,6 +2,11 @@
 
 Detailed guide for extracting OpenAPI specs from Rails applications using rswag.
 
+Framework-native rule:
+- Use `rswag` as the required extraction path for Rails.
+- If the project is not yet configured for `rswag`, add the minimum non-behavioral gem/config/spec integration required, then generate the spec with `rswag`.
+- Do not treat a manually authored OpenAPI file as the primary extraction path for Rails.
+
 ## Installation
 
 Add to Gemfile:

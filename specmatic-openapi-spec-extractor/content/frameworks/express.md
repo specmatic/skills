@@ -2,6 +2,11 @@
 
 This guide covers extracting an OpenAPI spec from existing Express APIs using `swagger-jsdoc`.
 
+Framework-native rule:
+- Use `swagger-jsdoc` as the required extraction path for Express.
+- If the repo is missing `swagger-jsdoc`, definition config, or route annotations/YAML fragments, add the minimum non-behavioral integration required, then generate the spec from that tooling.
+- Do not treat a manually authored OpenAPI file as the primary extraction path for Express.
+
 Use `swagger-jsdoc` as a CLI tool from npm.
 
 ## Prerequisites

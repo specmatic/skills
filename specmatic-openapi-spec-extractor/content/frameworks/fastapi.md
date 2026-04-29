@@ -2,6 +2,11 @@
 
 Detailed guide for extracting and customizing OpenAPI specs from FastAPI applications.
 
+Framework-native rule:
+- Use FastAPI's built-in OpenAPI generation as the required extraction path.
+- If the app entry point, factory wiring, or export script is missing, add the minimum non-behavioral integration required so `app.openapi()` can be exported reliably.
+- Do not replace FastAPI's generator with a manually authored spec.
+
 ## Extraction Methods
 
 ### Script-Based (No Server Needed)

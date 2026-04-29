@@ -26,6 +26,9 @@ If this skill is selected, do all of the following:
 
 - In the first user-facing progress update, explicitly say you are using `specmatic-openapi-spec-extractor`.
 - Treat extraction as phase 1, not the final outcome.
+- Use the framework-native extraction tool/path for the detected framework. Do not substitute a manual, hand-authored spec when the framework has a supported extraction path in this skill.
+- If the required extraction tool/integration is missing from the codebase, add the minimum non-behavioral framework-specific integration needed so the framework can generate/export the spec, then extract from that generated output.
+- "Use if available" is not acceptable for supported frameworks. For supported frameworks, the agent must make the extraction path available in the project unless the user explicitly forbids code changes.
 - After extraction succeeds, continue into the mandatory post-extraction workflow below. Do not stop after saving the first generated spec.
 - Prefer source annotations/config first, overlay second, and direct edits to the extracted spec never.
 - Do not change application implementation behavior to improve the spec. Allowed code changes are limited to extraction-related annotations, comments, and non-behavioral config required by the extraction tooling.
@@ -35,7 +38,7 @@ If this skill is selected, do all of the following:
 
 Default execution order:
 
-`announce skill -> identify framework -> open one framework guide -> extract spec -> save spec -> inspect gaps -> refine -> re-extract -> ask for Docker confirmation -> run Specmatic feedback loop`
+`announce skill -> identify framework -> open one framework guide -> integrate extraction path if missing -> extract spec -> save spec -> inspect gaps -> refine -> re-extract -> run Docker readiness gate -> run Specmatic feedback loop`
 
 Use this exact style in the first progress update:
 
@@ -58,18 +61,21 @@ This skill should win over a generic extraction-only skill when:
 
 Once the first spec has been extracted, the agent must execute these phases in order:
 
-1. Save the extracted spec to the repo.
-2. Inspect the generated spec for obvious gaps such as wrong status codes, generic `*/*` content types, missing security, weak request/response schemas, and missing error responses.
-3. Refine generation using source annotations/config first. Use overlay only when source-level fixes cannot express the required contract.
+1. If the framework-native extraction path is not already wired into the project, integrate it first using minimal non-behavioral code/config changes for that framework.
+2. Extract the spec using the framework-native generator/export path, not by manually writing `openapi.yaml`.
+3. Save the extracted spec to the repo.
+4. Inspect the generated spec for obvious gaps such as wrong status codes, generic `*/*` content types, missing security, weak request/response schemas, and missing error responses.
+5. Refine generation using source annotations/config first. Use overlay only when source-level fixes cannot express the required contract.
    Allowed refinements: annotations, decorators, doc comments, extraction-tool config, and overlay updates.
    Disallowed refinements without explicit user approval: implementation changes, behavioral changes, signature changes, data model changes made only to shape the contract, or business-logic edits.
-4. Re-extract the spec after each meaningful refinement.
-5. Before starting Specmatic contract tests, explicitly ask the user to confirm Docker Engine is running.
-6. If Docker confirmation is provided, continue into the Specmatic feedback loop.
-7. If Docker confirmation is not yet available, stop only after clearly reporting that extraction and refinement are done and the next blocked step is the Specmatic loop.
+6. Re-extract the spec after each meaningful refinement.
+7. Before starting Specmatic contract tests, perform the Docker readiness workflow defined in the Specmatic references.
+8. If Docker is available, continue automatically into the Specmatic feedback loop.
+9. If Docker is unavailable, stop only after clearly reporting that extraction and refinement are done and the next blocked step is the Specmatic loop.
 
 Do not treat annotation-only cleanup as the full post-extraction workflow.
 Do not end the task after exporting `openapi.yaml` unless the user explicitly asks for extraction only.
+Do not claim the spec was "extracted" if the file was primarily authored by hand outside the framework generator/export path.
 
 ## When to Use
 
@@ -101,6 +107,11 @@ Do not end the task after exporting `openapi.yaml` unless the user explicitly as
 - For runtime extraction, the app must be importable or startable
 
 ## Decision Framework
+
+Framework rule:
+- For every framework listed below, use the listed extraction method as the required path.
+- If the repo does not yet have the needed package, plugin, annotations, endpoint, config, or export script, add the minimum non-behavioral integration required to enable that extraction method, then run it.
+- Only fall back to non-framework-specific/manual derivation when the framework is not covered by this skill or the user explicitly forbids the required integration changes.
 
 | Framework | Method | Open this guide |
 |-----------|--------|-----------------|
