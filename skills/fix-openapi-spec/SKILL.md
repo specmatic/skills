@@ -44,6 +44,7 @@ Ignore any old test files or log files that existed before this conversation. Yo
   ```
   docker pull specmatic/specmatic:latest
   ```
+
 ### Phase 2: Auto-fix obscure errors
 
 1. Run the loop test script against the editable copy.

@@ -11,6 +11,7 @@ MOCK_CONTAINER_NAME=""
 PORT=""
 AUTO_PORT="true"
 HEALTH_URL_OVERRIDE="${HEALTH_URL:-}"
+TEST_BASE_URL_HOST="${TEST_BASE_URL_HOST:-host.docker.internal}"
 
 usage() {
   cat <<EOF
@@ -154,11 +155,16 @@ docker_preflight() {
 
 docker_run_specmatic() {
   local command="$1"
+  local specmatic_args=()
   shift
+
+  if [[ "${command}" == "test" ]]; then
+    specmatic_args+=(--testBaseURL "http://${TEST_BASE_URL_HOST}:${PORT}")
+  fi
 
   docker run \
     --rm \
-    --network host \
+    --add-host "${TEST_BASE_URL_HOST}:host-gateway" \
     -v "${SPEC_DIR}:/usr/src/app" \
     -w /usr/src/app \
     "$@" \
@@ -166,7 +172,8 @@ docker_run_specmatic() {
     "${command}" \
     --port "${PORT}" \
     "${SPEC_BASENAME}" \
-    --lenient
+    --lenient \
+    "${specmatic_args[@]}"
 }
 
 random_port() {
@@ -257,7 +264,7 @@ for ((attempt = 1; attempt <= MAX_AUTO_PORT_ATTEMPTS; attempt++)); do
 
   docker run \
     --rm \
-    --network host \
+    -p "${PORT}:${PORT}" \
     --name "${MOCK_CONTAINER_NAME}" \
     -v "${SPEC_DIR}:/usr/src/app" \
     -w /usr/src/app \

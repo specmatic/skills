@@ -67,6 +67,7 @@ if (-not $SpecFile) {
 
 $SPECMATIC_DOCKER_IMAGE = if ($env:SPECMATIC_DOCKER_IMAGE) { $env:SPECMATIC_DOCKER_IMAGE } else { "specmatic/specmatic:latest" }
 $HEALTH_URL_OVERRIDE = if ($env:HEALTH_URL) { $env:HEALTH_URL } else { $null }
+$TEST_BASE_URL_HOST = if ($env:TEST_BASE_URL_HOST) { $env:TEST_BASE_URL_HOST } else { "host.docker.internal" }
 $STARTUP_TIMEOUT_SECONDS = 25
 $MAX_AUTO_PORT_ATTEMPTS = 10
 $MAX_TEST_REQUEST_COMBINATIONS = if ($env:MAX_TEST_REQUEST_COMBINATIONS) { $env:MAX_TEST_REQUEST_COMBINATIONS } else { "1" }
@@ -218,7 +219,7 @@ try {
 
         $mockArgs = @(
             "run", "--rm",
-            "--network", "host",
+            "-p", "${Port}:${Port}",
             "--name", $mockContainerName,
             "-v", "${specDir}:/usr/src/app",
             "-w", "/usr/src/app",
@@ -275,11 +276,11 @@ try {
     Write-Host "Mock is healthy."
     Write-Host "Running loop test for $SpecFile"
 
-    $testSpecmaticArgs = @("test", "--port", $Port, $specBasename, "--lenient")
+    $testSpecmaticArgs = @("test", "--port", $Port, $specBasename, "--lenient", "--testBaseURL", "http://${TEST_BASE_URL_HOST}:$Port")
 
     $testArgs = @(
         "run", "--rm",
-        "--network", "host",
+        "--add-host", "${TEST_BASE_URL_HOST}:host-gateway",
         "-e", "MAX_TEST_REQUEST_COMBINATIONS=$MAX_TEST_REQUEST_COMBINATIONS",
         "-v", "${specDir}:/usr/src/app",
         "-w", "/usr/src/app",
