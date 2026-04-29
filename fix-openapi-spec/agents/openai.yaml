@@ -1,0 +1,3 @@
+interface:
+  display_name: "Fix OpenAPI Spec"
+  short_description: "Fix OpenAPI specifications using Specmatic's validation tools"
