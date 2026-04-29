@@ -31,7 +31,7 @@ Phase 1 -> Phase 2 -> Phase 3 -> Phase 4 validation -> STOP for user approval ->
 
 Ignore any old test files or log files that existed before this conversation. You'll work with the output of the relevant commands as per the workflow state machine.
 
-### Phase 1: Setup log files
+### Phase 1: Setup
 
 1. Create a copy of the input spec path for edits named `<spec-name>-updated.<ext>` in the same directory as the source spec.
   - Note: Always edit the `-updated` copy, not the original spec.
@@ -40,7 +40,10 @@ Ignore any old test files or log files that existed before this conversation. Yo
   # Actions log for <spec-file>
 
   ```
-
+3. Update docker using this command:
+  ```
+  docker pull specmatic/specmatic:latest
+  ```
 ### Phase 2: Auto-fix obscure errors
 
 1. Run the loop test script against the editable copy.
