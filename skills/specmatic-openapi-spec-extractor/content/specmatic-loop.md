@@ -56,6 +56,14 @@ Do not test all APIs at once by default.
 5. After each batch, summarize progress and ask whether to move to the next batch.
 6. After selected groups are done, run one final full Specmatic pass without any path filter.
 
+For targeted batch runs in this skill, use only the `PATH` filter syntax:
+
+- exact path: `PATH='/users'`
+- subtree wildcard: `PATH='/users/*'`
+- multiple paths in one filter: `PATH='/users,/products'`
+
+Do not introduce other Specmatic filter fields in this skill unless the user explicitly asks for them.
+
 ## Required User Prompts
 
 - Initial selection:

@@ -62,6 +62,10 @@ Document:
 - that generated runners sniff `~/.specmatic` or the equivalent home `.specmatic` directory on Windows, copy any discovered license into the repo-local `./.specmatic/`, and mount it into Docker
 - where and when to tune `specmatic.settings.test.maxTestRequestCombinations`
 - how to switch from full runs to filtered runs when needed
+- the minimal `PATH` filter syntax this skill supports for targeted runs:
+  - `PATH='/users'`
+  - `PATH='/users/*'`
+  - `PATH='/users,/products'`
 - known non-fixable failures
 
 ## Acceptance Checks

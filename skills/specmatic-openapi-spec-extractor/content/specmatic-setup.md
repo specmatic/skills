@@ -145,6 +145,16 @@ Rules:
 - Use a repo-relative path.
 - If multiple specs are tested, set `overlayFilePath` for each spec entry that needs it.
 
+## PATH Filter Rule
+
+This skill only needs the minimal `PATH` filter syntax for targeted contract-test batches.
+
+- Configure it under `systemUnderTest.service.runOptions.openapi.specs[].spec.filter`.
+- Exact path: `PATH='/users'`
+- Subtree wildcard: `PATH='/users/*'`
+- Multiple paths in one filter: `PATH='/users,/products'`
+- Remove the filter entirely for the final full-suite run.
+
 ## External Examples
 
 Directory conventions:
