@@ -1,11 +1,16 @@
 ## Installation
 
-Run the following command to install any skill from this repository in codex:
+To install the skill in Codex, run the following the following command:
+
 ```bash
-npx skills add git@github.com:specmatic/specmatic-skills.git -a codex
+npx skills add specmatic/skills -a codex
 ```
 
-Note: Use the `https` based github link if `ssh` is not set up in your machine.
+To install the skill in Claude Code, run the following the following command:
+
+```bash
+npx skills add specmatic/skills -a claude-code
+```
 
 ## Uninstallation
 
