@@ -237,4 +237,4 @@ Scripts for Windows (requires powershell)
 - **`scripts/run_loop_test.ps1`** - runs the loop test
 - **`scripts/validate_spec.ps1`** - validates a spec
 
-When running these scripts, resolve the path from the working directory of the fix-openapi-spec skill.
+When running these scripts, resolve the path from the fix-openapi-spec skill bundle directory.
