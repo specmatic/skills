@@ -16,9 +16,14 @@ Always pull the latest image before starting Specmatic contract tests or stubs:
 docker pull specmatic/enterprise:latest
 ```
 
+```powershell
+docker pull specmatic/enterprise:latest
+```
+
 Execution rule:
 - Use shell/Docker commands exactly as documented in this skill for validation, stubs, and test execution.
 - Do not use Specmatic MCP tools as a substitute for these commands.
+- Prefer OS-appropriate commands: Bash on macOS/Linux and PowerShell on Windows.
 
 ## `specmatic.yaml` Shape
 
@@ -31,6 +36,12 @@ Validate config before first test run and after config edits:
 ```bash
 npx --yes ajv-cli validate \
   -s https://raw.githubusercontent.com/specmatic/schemastore/master/src/schemas/json/specmatic.json \
+  -d specmatic.yaml
+```
+
+```powershell
+npx --yes ajv-cli validate `
+  -s https://raw.githubusercontent.com/specmatic/schemastore/master/src/schemas/json/specmatic.json `
   -d specmatic.yaml
 ```
 
@@ -78,6 +89,8 @@ systemUnderTest:
       # dictionary:
       #   path: ./specmatic/dictionary.yaml
 specmatic:
+  # license:
+  #   path: /usr/src/app/.specmatic/<license-file-name>
   settings:
     test:
       schemaResiliencyTests: all
@@ -94,9 +107,22 @@ specmatic:
 - Do not add `specmatic.settings.test.maxTestRequestCombinations` by default.
 - Add `maxTestRequestCombinations` only when too many tests are being generated or runtime is too high.
 - Configure `specmatic.license.path` only if the license file is actually present.
+- When present, point `specmatic.license.path` at the in-container path `/usr/src/app/.specmatic/<license-file-name>`.
+- License discovery source is the user home `.specmatic` directory:
+  - macOS/Linux: `~/.specmatic`
+  - Windows: `$HOME/.specmatic` or `%USERPROFILE%\\.specmatic`
+- Generated runners should sniff that directory, copy the discovered license into the current working directory under `./.specmatic/` when needed, and mount that directory into Docker.
 - If the license file is absent, omit `specmatic.license` entirely and let Specmatic use its built-in trial license.
 - Do not fail the workflow only because the enterprise license file is missing.
 - Treat any config key outside schema as invalid.
+- Default supported topology: host-run SUT only. Containerized-SUT and Docker Compose networking are out of scope for this iteration.
+- Keep `baseUrl` on `http://host.docker.internal:<SUT_PORT>` for Windows, macOS, and Linux.
+
+## Docker Networking Note
+
+- Docker Desktop on Windows and macOS already resolves `host.docker.internal` for containers.
+- Linux typically does not, so Specmatic `docker run` commands must add `--add-host host.docker.internal:host-gateway`.
+- Do not use `--network host` for this skill.
 
 ## Overlay Rules
 
@@ -131,23 +157,115 @@ Rules:
 - Regenerate or update examples for each batch so payloads match the deterministic data for that run.
 - Do not add examples for `400` scenarios. Let Specmatic generate invalid-request coverage through schema resiliency tests.
 
-Validate external examples before running tests:
+Validate external examples before running tests.
+
+macOS:
 
 ```bash
 docker run --rm \
   -v "$(pwd)/specmatic:/usr/src/app/specmatic" \
-  specmatic/enterprise examples validate \
+  -v "$(pwd)/.specmatic:/usr/src/app/.specmatic" \
+  specmatic/enterprise:latest examples validate \
   --spec-file "specmatic/<your-openapi-file.yaml>"
 ```
 
-If examples are in non-default locations:
+Linux:
+
+```bash
+docker run --rm \
+  --add-host host.docker.internal:host-gateway \
+  -v "$(pwd):/usr/src/app" \
+  -v "$(pwd)/.specmatic:/usr/src/app/.specmatic" \
+  specmatic/enterprise:latest examples validate \
+  --spec-file "specmatic/<your-openapi-file.yaml>"
+```
+
+Windows PowerShell:
+
+```powershell
+docker run --rm `
+  -v "${PWD}/specmatic:/usr/src/app/specmatic" `
+  -v "${PWD}/.specmatic:/usr/src/app/.specmatic" `
+  specmatic/enterprise:latest examples validate `
+  --spec-file "specmatic/<your-openapi-file.yaml>"
+```
+
+If examples are in non-default locations.
+
+macOS:
 
 ```bash
 docker run --rm \
   -v "$(pwd):/usr/src/app" \
-  specmatic/enterprise examples validate \
+  -v "$(pwd)/.specmatic:/usr/src/app/.specmatic" \
+  specmatic/enterprise:latest examples validate \
   --spec-file "specmatic/<your-openapi-file.yaml>" \
   --examples-dir "<custom-examples-dir>"
+```
+
+Linux:
+
+```bash
+docker run --rm \
+  --add-host host.docker.internal:host-gateway \
+  -v "$(pwd):/usr/src/app" \
+  -v "$(pwd)/.specmatic:/usr/src/app/.specmatic" \
+  specmatic/enterprise:latest examples validate \
+  --spec-file "specmatic/<your-openapi-file.yaml>" \
+  --examples-dir "<custom-examples-dir>"
+```
+
+Windows PowerShell:
+
+```powershell
+docker run --rm `
+  -v "${PWD}:/usr/src/app" `
+  -v "${PWD}/.specmatic:/usr/src/app/.specmatic" `
+  specmatic/enterprise:latest examples validate `
+  --spec-file "specmatic/<your-openapi-file.yaml>" `
+  --examples-dir "<custom-examples-dir>"
+```
+
+Full contract test command.
+
+macOS:
+
+```bash
+docker run --rm \
+  -v "$(pwd)/specmatic:/usr/src/app/specmatic" \
+  -v "$(pwd)/.specmatic:/usr/src/app/.specmatic" \
+  -v "$(pwd)/specmatic.yaml:/usr/src/app/specmatic.yaml" \
+  -v "$(pwd)/build/reports:/usr/src/app/build/reports" \
+  specmatic/enterprise:latest test \
+  --host=host.docker.internal \
+  --port="<SUT_PORT>"
+```
+
+Linux:
+
+```bash
+docker run --rm \
+  --add-host host.docker.internal:host-gateway \
+  -v "$(pwd)/specmatic:/usr/src/app/specmatic" \
+  -v "$(pwd)/.specmatic:/usr/src/app/.specmatic" \
+  -v "$(pwd)/specmatic.yaml:/usr/src/app/specmatic.yaml" \
+  -v "$(pwd)/build/reports:/usr/src/app/build/reports" \
+  specmatic/enterprise:latest test \
+  --host=host.docker.internal \
+  --port="<SUT_PORT>"
+```
+
+Windows PowerShell:
+
+```powershell
+docker run --rm `
+  -v "${PWD}/specmatic:/usr/src/app/specmatic" `
+  -v "${PWD}/.specmatic:/usr/src/app/.specmatic" `
+  -v "${PWD}/specmatic.yaml:/usr/src/app/specmatic.yaml" `
+  -v "${PWD}/build/reports:/usr/src/app/build/reports" `
+  specmatic/enterprise:latest test `
+  --host=host.docker.internal `
+  --port="<SUT_PORT>"
 ```
 
 ## Deterministic Data-Prep Expectations

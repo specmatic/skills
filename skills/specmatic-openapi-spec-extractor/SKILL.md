@@ -62,6 +62,12 @@ This skill should win over a generic extraction-only skill when:
 ## Docker Execution Rule
 
 - Assume Docker is available and the Docker engine is running.
+- Default supported topology for this skill: the SUT runs on the host machine and Specmatic runs in Docker.
+- Use `http://host.docker.internal:<SUT_PORT>` as the default SUT base URL in `specmatic.yaml` on every platform.
+- Do not use `--network host` anywhere in this skill.
+- Linux-only runner rule: add `--add-host host.docker.internal:host-gateway` to Specmatic `docker run` commands so `host.docker.internal` resolves the same way it does on Docker Desktop.
+- Windows/macOS runner rule: run Docker without extra host mapping.
+- Containerized-SUT and Docker Compose networking are out of scope for this iteration.
 - Do not ask the user about Docker availability before attempting the documented Specmatic `docker pull`, `docker run`, validation, or test commands from this skill.
 - Attempt the Specmatic feedback loop first.
 - If command output indicates a Docker-specific failure such as Docker not being installed, Docker not being on `PATH`, Docker Desktop not being available, or the Docker daemon / engine not running, stop and ask the user exactly:
@@ -83,7 +89,7 @@ Once the first spec has been extracted, the agent must execute these phases in o
 6. Re-extract the spec after each meaningful refinement.
 7. Attempt the Specmatic feedback loop using the documented `docker pull`, `docker run`, validation, and test commands from this skill.
 8. If a Docker command fails for a Docker-specific reason, stop and ask the user exactly: `Please confirm if docker engine is running`
-9. Prepare the final deliverables from this skill, including `run_contract_tests.sh` and `CONTRACT_TESTS_README.md`, regardless of whether deterministic data setup is needed.
+9. Prepare the final deliverables from this skill, including `run_contract_tests.sh`, `run_contract_tests.ps1`, and `CONTRACT_TESTS_README.md`, regardless of whether deterministic data setup is needed.
 10. If Docker is unavailable, stop only after clearly reporting that extraction and refinement are done, the runnable script and README have been prepared, and the next blocked step is the live Specmatic loop.
 
 Do not treat annotation-only cleanup as the full post-extraction workflow.
@@ -113,8 +119,8 @@ Do not claim the spec was "extracted" if the file was primarily authored by hand
 |--------|-------------|
 | OpenAPI spec | Extracted JSON or YAML contract |
 | Refined source metadata | Annotation/config updates used to improve regenerated output |
-| Contract test runner | Runnable `run_contract_tests.sh` for the full suite, with optional setup hook |
-| Contract test README | `CONTRACT_TESTS_README.md` describing how to run the generated script |
+| Contract test runners | Runnable `run_contract_tests.sh` and `run_contract_tests.ps1` for the full suite, with optional setup hook |
+| Contract test README | `CONTRACT_TESTS_README.md` describing how to run the generated scripts |
 
 ## Prerequisites
 

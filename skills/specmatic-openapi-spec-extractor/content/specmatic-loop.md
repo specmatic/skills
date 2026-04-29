@@ -17,10 +17,11 @@ Before running the Specmatic loop, assume Docker Engine is running and attempt t
 
 Rules:
 
+- Prefer OS-appropriate commands from this skill: Bash examples for macOS/Linux and PowerShell examples for Windows.
 - Do not ask the user to confirm Docker availability before the first Specmatic `docker pull` or `docker run` attempt.
 - If command output indicates a Docker-specific failure such as Docker not being installed, Docker not being on `PATH`, Docker Desktop not being available, or the Docker daemon / engine not running, stop and ask the user exactly:
   `Please confirm if docker engine is running`
-- If the loop stops for a Docker-specific failure, still prepare the final runnable assets from this skill, including `run_contract_tests.sh` and `CONTRACT_TESTS_README.md`
+- If the loop stops for a Docker-specific failure, still prepare the final runnable assets from this skill, including `run_contract_tests.sh`, `run_contract_tests.ps1`, and `CONTRACT_TESTS_README.md`
 - State that the next blocked step is the Specmatic feedback loop only after a Docker command fails for a Docker-specific reason
 
 ## Default Behavior
@@ -40,6 +41,9 @@ Follow this sequence strictly:
 Execution rule:
 - `prepare Specmatic setup`, `validate examples`, `run targeted tests`, and `final full run` mean executing the documented `docker pull`, `docker run`, and shell commands from this skill.
 - Do not replace those steps with Specmatic MCP calls.
+- Use `host.docker.internal` as the supported default hostname for the host-run SUT.
+- On Linux, add `--add-host host.docker.internal:host-gateway` to Specmatic `docker run` commands.
+- On Windows/macOS, do not add extra host mapping.
 
 ## Batch Strategy
 

@@ -7,6 +7,7 @@ Use this guide when preparing the final runnable assets, acceptance checks, or t
 At the end of the workflow, prepare:
 
 - a runnable `run_contract_tests.sh` script for the full suite
+- a runnable `run_contract_tests.ps1` script for the full suite
 - a `CONTRACT_TESTS_README.md`
 - a final acceptance summary covering determinism, batching, and report generation
 
@@ -15,63 +16,50 @@ These deliverables are mandatory even when the application does not need any see
 Execution rule:
 - The generated script and the live hardening workflow must run Specmatic through the documented shell/Docker commands in this skill.
 - Do not switch to Specmatic MCP execution in place of those commands.
+- The checked-in templates under [content/templates/run_contract_tests.sh](content/templates/run_contract_tests.sh) and [content/templates/run_contract_tests.ps1](content/templates/run_contract_tests.ps1) are the source of truth for generated runner content.
 
-## `run_contract_tests.sh`
+## Runner Scripts
 
-The final script should run the full suite in one go with no batch filters.
-
-```bash
-#!/bin/bash
-set -euo pipefail
-
-SUT_PORT=8090
-PRE_TEST_SETUP_CMD="${PRE_TEST_SETUP_CMD:-}"
-
-docker pull specmatic/enterprise:latest
-
-# Optional runtime throttle for slow or overly large suites
-# Add this only after you have observed that too many test combinations are being generated:
-# yq -i '.specmatic.settings.test.maxTestRequestCombinations = 1' specmatic.yaml
-
-if [ -n "$PRE_TEST_SETUP_CMD" ]; then
-  echo "Running pre-test setup: $PRE_TEST_SETUP_CMD"
-  eval "$PRE_TEST_SETUP_CMD"
-fi
-
-docker run --rm \
-  -v "$(pwd)/specmatic:/usr/src/app/specmatic" \
-  specmatic/enterprise examples validate \
-  --spec-file "specmatic/<your-openapi-file.yaml>"
-
-docker run --rm \
-  --add-host host.docker.internal:host-gateway \
-  -v "$(pwd)/specmatic:/usr/src/app/specmatic" \
-  -v "$(pwd)/specmatic.yaml:/usr/src/app/specmatic.yaml" \
-  -v "$(pwd)/build/reports:/usr/src/app/build/reports" \
-  specmatic/enterprise test \
-  --host=host.docker.internal \
-  --port="$SUT_PORT"
-
-echo "Done. HTML report: ./build/reports/specmatic/html/index.html"
-```
+The final scripts should run the full suite in one go with no batch filters.
+Use [content/templates/run_contract_tests.sh](content/templates/run_contract_tests.sh) for the canonical Bash template and [content/templates/run_contract_tests.ps1](content/templates/run_contract_tests.ps1) for the canonical PowerShell template.
 
 Rules:
 
-- The script must run the full suite without `--filter`.
-- The script must always be generated, even for simple applications with no database, fixtures, or in-memory seed flow.
-- The script may include an optional deterministic setup hook.
+- Generate both `run_contract_tests.sh` and `run_contract_tests.ps1`.
+- Both scripts must run the full suite without `--filter`.
+- Both scripts must always be generated, even for simple applications with no database, fixtures, or in-memory seed flow.
+- Both scripts may include an optional deterministic setup hook.
+- Use the same logical interface in both scripts:
+  - `SUT_PORT`
+  - optional `PRE_TEST_SETUP_CMD`
+  - optional `SPECMATIC_DOCKER_IMAGE`
 - For simple applications, leave `PRE_TEST_SETUP_CMD` empty by default and do not invent a fake setup step.
 - Do not hard-code `maxTestRequestCombinations` into the config by default.
+- Both scripts must sniff for a license under the user home `.specmatic` directory, copy the discovered file into the current working directory under `./.specmatic/` when needed, and mount that directory into Docker.
+- If a license is found, generated `specmatic.yaml` must include `specmatic.license.path: /usr/src/app/.specmatic/<license-file-name>`.
+- If no license is found, omit `specmatic.license` entirely.
+- Bash runner requirements:
+  - resolve paths safely
+  - add `--add-host host.docker.internal:host-gateway` only on Linux
+  - avoid `--network host`
+- PowerShell runner requirements:
+  - resolve absolute paths before mounting
+  - build Docker arguments with arrays
+  - run optional setup with PowerShell execution
+  - avoid `--network host`
 
 ## `CONTRACT_TESTS_README.md`
 
 Document:
 
-- what `run_contract_tests.sh` does step-by-step
+- what `run_contract_tests.sh` and `run_contract_tests.ps1` do step-by-step
 - required inputs and files: `specmatic.yaml`, extracted specs, examples, running SUT, optional license file
 - how to set `SUT_PORT`
 - how to pass deterministic setup via `PRE_TEST_SETUP_CMD`
 - that `PRE_TEST_SETUP_CMD` is optional and should remain unset for applications that do not require pre-test setup
+- the supported networking model: host-run SUT on `host.docker.internal`
+- that Linux runners add `--add-host host.docker.internal:host-gateway` and Windows/macOS do not
+- that generated runners sniff `~/.specmatic` or the equivalent home `.specmatic` directory on Windows, copy any discovered license into the repo-local `./.specmatic/`, and mount it into Docker
 - where and when to tune `specmatic.settings.test.maxTestRequestCombinations`
 - how to switch from full runs to filtered runs when needed
 - known non-fixable failures
@@ -95,8 +83,11 @@ Verify all of the following:
 - runtime throttle guidance is applied only when suites are too large or too slow
 
 4. Script contract
-- `run_contract_tests.sh` runs the full suite in one command
-- it validates examples, runs tests, and points to the report output
+- `run_contract_tests.sh` and `run_contract_tests.ps1` run the full suite in one command
+- they validate examples, run tests, and point to the report output
+- neither script uses `--network host`
+- Linux runner adds `--add-host host.docker.internal:host-gateway`
+- if a license is discovered, the runner copies it into `./.specmatic/`, mounts it into Docker, and `specmatic.yaml` targets `/usr/src/app/.specmatic/<license-file-name>`
 
 ## Common Issues After Extraction
 
@@ -127,9 +118,10 @@ Verify all of the following:
 |-------|-------|----------|
 | `Cannot connect to the Docker daemon` | Docker Engine is not running | Start Docker Desktop or Engine, then rerun |
 | Specmatic cannot reach the SUT | Wrong SUT port, SUT not started, or bind mismatch | Start the SUT first and verify `SUT_PORT` or `baseUrl` |
-| `host.docker.internal` connectivity issues | Docker host alias not configured in that environment | Keep `--add-host host.docker.internal:host-gateway` or provide an equivalent mapping |
+| `host.docker.internal` connectivity issues on Linux | Docker host alias not configured in that environment | Keep `--add-host host.docker.internal:host-gateway` in the Linux runner |
+| `host.docker.internal` connectivity issues on Windows/macOS | SUT is not listening on the expected host port | Verify the SUT is running on the host and `SUT_PORT` matches |
 | Overlay changes are ignored | `overlayFilePath` not enabled or wrong path | Correct the runtime spec entry in `specmatic.yaml` |
 | Stub returns invalid or empty responses | Stub spec lacks concrete examples or wrong port mapping | Add response examples and verify stub port mapping |
-| `License file not found` or enterprise feature error | `specmatic.license.path` points to a missing file | Correct the path or remove `specmatic.license` and use the built-in trial license |
+| `License file not found` or enterprise feature error | `specmatic.license.path` points to a missing file or the runner did not mount `./.specmatic` | Correct the path, ensure the runner copied the license into `./.specmatic/`, or remove `specmatic.license` and use the built-in trial license |
 | Empty or minimal extracted spec | Routes not registered at import or startup time | Ensure all route modules are imported and the full router tree is loaded |
 | Framework doc endpoint missing | OpenAPI library not configured or route path differs | Configure the framework’s OpenAPI support and verify the actual docs endpoint path |
