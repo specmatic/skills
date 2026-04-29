@@ -1,12 +1,12 @@
 ## Installation
 
-To install the skill in Codex, run the following the following command:
+To install the skills in Codex, run the following the following command:
 
 ```bash
 npx skills add specmatic/skills -a codex
 ```
 
-To install the skill in Claude Code, run the following the following command:
+To install the skills in Claude Code, run the following the following command:
 
 ```bash
 npx skills add specmatic/skills -a claude-code
