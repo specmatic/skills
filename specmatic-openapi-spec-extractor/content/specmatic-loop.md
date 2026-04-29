@@ -11,25 +11,23 @@ Before starting this loop:
 - Source-level refinements have been attempted where safe
 - The agent is ready to continue beyond extraction-only work
 
-## Docker Confirmation Rule
+## Docker Execution Rule
 
-Before running the Specmatic loop, explicitly ask the user to confirm Docker Engine is running.
+Before running the Specmatic loop, assume Docker Engine is running and attempt the documented commands first.
 
-Use this exact style:
+Rules:
 
-- `Next, we will harden the extracted OpenAPI spec using the Specmatic feedback loop. Please confirm Docker Engine is running, and I’ll begin the setup.`
-
-If Docker is not confirmed yet:
-
-- Stop after reporting that extraction and refinement are done
-- Still prepare the final runnable assets from this skill, including `run_contract_tests.sh` and `CONTRACT_TESTS_README.md`
-- State that the next blocked step is the Specmatic feedback loop
+- Do not ask the user to confirm Docker availability before the first Specmatic `docker pull` or `docker run` attempt.
+- If command output indicates a Docker-specific failure such as Docker not being installed, Docker not being on `PATH`, Docker Desktop not being available, or the Docker daemon / engine not running, stop and ask the user exactly:
+  `Please confirm if docker engine is running`
+- If the loop stops for a Docker-specific failure, still prepare the final runnable assets from this skill, including `run_contract_tests.sh` and `CONTRACT_TESTS_README.md`
+- State that the next blocked step is the Specmatic feedback loop only after a Docker command fails for a Docker-specific reason
 
 ## Default Behavior
 
 - As soon as extraction and initial refinement succeed, move toward the Specmatic loop.
 - Do not stop after extraction unless the user explicitly asked for extraction-only output.
-- Do not enter the Docker-dependent loop before the Docker confirmation above.
+- Do not wait for Docker confirmation before the first loop attempt.
 - Run the Specmatic loop only through the shell/Docker commands documented in this skill.
 - Do not use Specmatic MCP tools or any alternate Specmatic integration when this skill is active.
 
@@ -37,7 +35,7 @@ If Docker is not confirmed yet:
 
 Follow this sequence strictly:
 
-`confirm Docker -> prepare Specmatic setup -> validate examples -> run targeted tests -> fix mismatches -> repeat per batch -> final full run`
+`prepare Specmatic setup -> validate examples -> run targeted tests -> fix mismatches -> repeat per batch -> final full run`
 
 Execution rule:
 - `prepare Specmatic setup`, `validate examples`, `run targeted tests`, and `final full run` mean executing the documented `docker pull`, `docker run`, and shell commands from this skill.

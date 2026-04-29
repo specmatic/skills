@@ -40,7 +40,7 @@ If this skill is selected, do all of the following:
 
 Default execution order:
 
-`announce skill -> identify framework -> open one framework guide -> integrate extraction path if missing -> extract spec -> save spec -> inspect gaps -> refine -> re-extract -> run Docker readiness gate -> run Specmatic feedback loop -> prepare final runnable deliverables`
+`announce skill -> identify framework -> open one framework guide -> integrate extraction path if missing -> extract spec -> save spec -> inspect gaps -> refine -> re-extract -> prepare Specmatic setup -> run Specmatic feedback loop -> prepare final runnable deliverables`
 
 Use this exact style in the first progress update:
 
@@ -59,6 +59,15 @@ This skill should win over a generic extraction-only skill when:
 - The task involves an existing API implementation rather than writing a spec from scratch
 - The framework can generate an initial spec and then benefit from contract-test feedback
 
+## Docker Execution Rule
+
+- Assume Docker is available and the Docker engine is running.
+- Do not ask the user about Docker availability before attempting the documented Specmatic `docker pull`, `docker run`, validation, or test commands from this skill.
+- Attempt the Specmatic feedback loop first.
+- If command output indicates a Docker-specific failure such as Docker not being installed, Docker not being on `PATH`, Docker Desktop not being available, or the Docker daemon / engine not running, stop and ask the user exactly:
+  `Please confirm if docker engine is running`
+- Do not claim the Specmatic feedback loop is blocked on Docker until after a Docker command fails for a Docker-specific reason.
+
 ## Mandatory Post-Extraction Workflow
 
 Once the first spec has been extracted, the agent must execute these phases in order:
@@ -71,8 +80,8 @@ Once the first spec has been extracted, the agent must execute these phases in o
    Allowed refinements: annotations, decorators, doc comments, extraction-tool config, and overlay updates.
    Disallowed refinements without explicit user approval: implementation changes, behavioral changes, signature changes, data model changes made only to shape the contract, or business-logic edits.
 6. Re-extract the spec after each meaningful refinement.
-7. Before starting Specmatic contract tests, perform the Docker readiness workflow defined in the Specmatic references.
-8. If Docker is available, continue automatically into the Specmatic feedback loop using the documented `docker pull`, `docker run`, validation, and test commands from this skill.
+7. Attempt the Specmatic feedback loop using the documented `docker pull`, `docker run`, validation, and test commands from this skill.
+8. If a Docker command fails for a Docker-specific reason, stop and ask the user exactly: `Please confirm if docker engine is running`
 9. Prepare the final deliverables from this skill, including `run_contract_tests.sh` and `CONTRACT_TESTS_README.md`, regardless of whether deterministic data setup is needed.
 10. If Docker is unavailable, stop only after clearly reporting that extraction and refinement are done, the runnable script and README have been prepared, and the next blocked step is the live Specmatic loop.
 
