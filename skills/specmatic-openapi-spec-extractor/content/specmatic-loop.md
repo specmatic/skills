@@ -20,7 +20,7 @@ Rules:
 - Prefer OS-appropriate commands from this skill: Bash examples for macOS/Linux and PowerShell examples for Windows.
 - Do not ask the user to confirm Docker availability before the first Specmatic `docker pull` or `docker run` attempt.
 - If command output indicates a Docker-specific failure such as Docker not being installed, Docker not being on `PATH`, Docker Desktop not being available, or the Docker daemon / engine not running, stop and ask the user exactly:
-  `Please confirm if docker engine is running`
+  `**Action Required:** Please start the Docker engine, then confirm once it is running.`
 - If the loop stops for a Docker-specific failure, still prepare the final runnable assets from this skill, including `run_contract_tests.sh`, `run_contract_tests.ps1`, and `CONTRACT_TESTS_README.md`
 - State that the next blocked step is the Specmatic feedback loop only after a Docker command fails for a Docker-specific reason
 
@@ -66,12 +66,19 @@ Do not introduce other Specmatic filter fields in this skill unless the user exp
 
 ## Required User Prompts
 
+When the workflow needs a user decision, make the next step visually explicit. Prefix the prompt with `**Action Required:**` and then ask the exact question.
+If the loop is blocked for any other reason that requires user action, use the same `**Action Required:**` prefix even when the exact prompt is not prewritten here.
+
+- Before starting the hardening loop:
+  `**Action Required:** I’ve finished extraction and initial refinement. I’m ready to start the Specmatic hardening loop. Do you want me to continue with the first API batch now?`
+- Docker startup:
+  `**Action Required:** Please start the Docker engine, then confirm once it is running.`
 - Initial selection:
-  `I found these API groups from the spec: <list>. Which group(s) do you want to harden first?`
+  `**Action Required:** I found these API groups from the spec: <list>. Which group(s) do you want to harden first?`
 - Long-running batch:
-  `This batch is taking longer than expected. Do you want to continue this batch, or defer it and move to the next batch?`
+  `**Action Required:** This batch is taking longer than expected. Do you want to continue this batch, or defer it and move to the next batch?`
 - Next batch:
-  `Do you want to move to the next batch of APIs from the remaining list?`
+  `**Action Required:** Do you want to move to the next batch of APIs from the remaining list?`
 
 ## Fix Order
 
