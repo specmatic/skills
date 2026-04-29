@@ -27,6 +27,10 @@ Phase 1 -> Phase 2 -> Phase 3 -> Phase 4 validation -> STOP for user approval ->
   `Please confirm if docker engine is running`
 - Do not claim validation or loop testing is unavailable until after a script run fails for a Docker-specific reason.
 
+## Working area
+
+Ignore any old test files or log files that existed before this conversation. You'll work with the output of the relevant commands as per the workflow state machine.
+
 ### Phase 1: Setup log files
 
 1. Create a copy of the input spec path for edits named `<spec-name>-updated.<ext>` in the same directory as the source spec.
