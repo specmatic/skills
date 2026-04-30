@@ -66,6 +66,11 @@ Document:
   - `PATH='/users'`
   - `PATH='/users/*'`
   - `PATH='/users,/products'`
+- how license-limited results are reported when no valid license is available:
+  - total tests run
+  - passed
+  - failed
+  - failed due to license limits
 - known non-fixable failures
 
 ## Acceptance Checks
@@ -92,6 +97,11 @@ Verify all of the following:
 - neither script uses `--network host`
 - Linux runner adds `--add-host host.docker.internal:host-gateway`
 - if a license is discovered, the runner copies it into `./.specmatic/`, mounts it into Docker, and `specmatic.yaml` targets `/usr/src/app/.specmatic/<license-file-name>`
+
+5. License-limited completion
+- if the user does not have a license, the workflow still produces deliverables
+- the final report calls out how many tests failed due to license limits
+- the final summary states that full hardening could not be completed because a valid license was not available
 
 ## Common Issues After Extraction
 
@@ -126,6 +136,6 @@ Verify all of the following:
 | `host.docker.internal` connectivity issues on Windows/macOS | SUT is not listening on the expected host port | Verify the SUT is running on the host and `SUT_PORT` matches |
 | Overlay changes are ignored | `overlayFilePath` not enabled or wrong path | Correct the runtime spec entry in `specmatic.yaml` |
 | Stub returns invalid or empty responses | Stub spec lacks concrete examples or wrong port mapping | Add response examples and verify stub port mapping |
-| `License file not found` or enterprise feature error | `specmatic.license.path` points to a missing file or the runner did not mount `./.specmatic` | Correct the path, ensure the runner copied the license into `./.specmatic/`, or remove `specmatic.license` and use the built-in trial license |
+| Trial-limit or enterprise-feature failure without a license | No valid license was available for all Specmatic test coverage | Report the license-limited failures, ask the user for a direct license path or a license under their home `.specmatic` directory, and continue to deliverables if no license is available |
 | Empty or minimal extracted spec | Routes not registered at import or startup time | Ensure all route modules are imported and the full router tree is loaded |
 | Framework doc endpoint missing | OpenAPI library not configured or route path differs | Configure the framework’s OpenAPI support and verify the actual docs endpoint path |

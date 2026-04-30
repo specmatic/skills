@@ -73,6 +73,14 @@ This skill should win over a generic extraction-only skill when:
 - Attempt the Specmatic feedback loop first.
 - If command output indicates a Docker-specific failure such as Docker not being installed, Docker not being on `PATH`, Docker Desktop not being available, or the Docker daemon / engine not running, stop and ask the user exactly:
   `**Action Required:** Please start the Docker engine, then confirm once it is running.`
+- If no license is found, continue the Specmatic feedback loop without a license.
+- Treat any Specmatic trial-limit or enterprise-feature-limit hit as a licensing-caused test failure, not as a hard workflow blocker.
+- If a Specmatic command fails for a trial-license or enterprise-feature limit reason, do not treat that as a hard blocker by itself.
+- Call out that those failures are due to licensing, report how many tests ran, passed, failed, and failed due to license limits, and ask the user exactly:
+  `**Action Required:** Some Specmatic tests failed because no valid license was available. If you have a license, please share its path or add it under your home .specmatic directory.`
+- If the user shares a license path, configure `specmatic.yaml` to use it and mount it into Docker for the next run.
+- If the user adds the license under their home `.specmatic` directory, use the existing auto-discovery flow on the next run.
+- If the user does not have a license, continue to final reporting and deliverables, and state that full hardening could not be completed because of license-limited test failures.
 - Do not claim the Specmatic feedback loop is blocked on Docker until after a Docker command fails for a Docker-specific reason.
 - If it appears to be a permissions issue, try resolving it using your environment’s built-in privilege escalation mechanisms available to you.
 
@@ -90,8 +98,10 @@ Once the first spec has been extracted, the agent must execute these phases in o
 6. Re-extract the spec after each meaningful refinement.
 7. Attempt the Specmatic feedback loop using the documented `docker pull`, `docker run`, validation, and test commands from this skill.
 8. If a Docker command fails for a Docker-specific reason, stop and ask the user exactly: `**Action Required:** Please start the Docker engine, then confirm once it is running.`
-9. Prepare the final deliverables from this skill, including `run_contract_tests.sh`, `run_contract_tests.ps1`, and `CONTRACT_TESTS_README.md`, regardless of whether deterministic data setup is needed.
-10. If Docker is unavailable, stop only after clearly reporting that extraction and refinement are done, the runnable script and README have been prepared, and the next blocked step is the live Specmatic loop.
+9. If no license is found, continue the loop with the built-in trial. If a Specmatic command fails because of a trial-license or enterprise-feature limit, report that those failures are license-related, include counts for tests run, passed, failed, and failed due to license limits, and ask the user exactly: `**Action Required:** Some Specmatic tests failed because no valid license was available. If you have a license, please share its path or add it under your home .specmatic directory.`
+10. If the user shares a license path, configure `specmatic.yaml` to use it, mount it into Docker, and rerun the relevant validation or test step.
+11. Prepare the final deliverables from this skill, including `run_contract_tests.sh`, `run_contract_tests.ps1`, and `CONTRACT_TESTS_README.md`, regardless of whether deterministic data setup is needed.
+12. If Docker is unavailable, stop only after clearly reporting that extraction and refinement are done, the runnable script and README have been prepared, and the next blocked step is the live Specmatic loop.
 
 Do not treat annotation-only cleanup as the full post-extraction workflow.
 Do not end the task after exporting `openapi.yaml` unless the user explicitly asks for extraction only.

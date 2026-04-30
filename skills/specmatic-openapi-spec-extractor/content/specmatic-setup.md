@@ -113,6 +113,11 @@ specmatic:
   - Windows: `$HOME/.specmatic` or `%USERPROFILE%\\.specmatic`
 - Generated runners should sniff that directory, copy the discovered license into the current working directory under `./.specmatic/` when needed, and mount that directory into Docker.
 - If the license file is absent, omit `specmatic.license` entirely and let Specmatic use its built-in trial license.
+- If the license file is absent, do not stop the loop up front. Continue with the built-in trial.
+- If a later Specmatic command fails because of a trial-license or enterprise-feature limit, ask the user for either:
+  - a direct license file path, or
+  - a license placed under their home `.specmatic` directory
+- If the user shares a direct path, configure `specmatic.yaml` to point at the mounted in-container location for that file and mount it into Docker for the rerun.
 - Do not fail the workflow only because the enterprise license file is missing.
 - Treat any config key outside schema as invalid.
 - Default supported topology: host-run SUT only. Containerized-SUT and Docker Compose networking are out of scope for this iteration.
