@@ -30,6 +30,7 @@ If this skill is selected, do all of the following:
 - If the required extraction tool/integration is missing from the codebase, add the minimum non-behavioral framework-specific integration needed so the framework can generate/export the spec, then extract from that generated output.
 - "Use if available" is not acceptable for supported frameworks. For supported frameworks, the agent must make the extraction path available in the project unless the user explicitly forbids code changes.
 - After extraction succeeds, continue into the mandatory post-extraction workflow below. Do not stop after saving the first generated spec.
+- `specmatic validate` is only a preflight check for spec/example correctness. It is never the finish line for this skill.
 - Always prepare the final runnable contract-test assets for the user once extraction and refinement are complete, even if the live Docker-dependent loop cannot run yet.
 - Prefer source annotations/config first, overlay second, and direct edits to the extracted spec never.
 - Do not change application implementation behavior to improve the spec. Allowed code changes are limited to extraction-related annotations, comments, and non-behavioral config required by the extraction tooling.
@@ -98,7 +99,7 @@ Once the first spec has been extracted, the agent must execute these phases in o
    Allowed refinements: annotations, decorators, doc comments, extraction-tool config, and overlay updates.
    Disallowed refinements without explicit user approval: implementation changes, behavioral changes, signature changes, data model changes made only to shape the contract, or business-logic edits.
 6. Re-extract the spec after each meaningful refinement.
-7. Attempt the Specmatic feedback loop using the documented `docker pull`, `docker run`, validation, and test commands from this skill.
+7. Run `specmatic validate` only as a preflight check, then start the SUT and attempt the live Specmatic feedback loop using the documented image-resolution, `docker run`, and `specmatic test` commands from this skill.
 8. If failures show that the SUT cannot reach one or more downstream HTTP dependencies, identify all required downstream dependencies for the current batch, stand up a Specmatic stub for each dependency on its expected host port, generate or update stub examples for each dependency, and rerun the relevant validation or test step.
 9. If a Docker command fails for a Docker-specific reason, stop and ask the user exactly: `**Action Required:** Please start the Docker engine, then confirm once it is running.`
 10. If no license is found, continue the loop with the built-in trial. If a Specmatic command fails because of a trial-license or enterprise-feature limit, report that those failures are license-related, include counts for tests run, passed, failed, and failed due to license limits, and ask the user exactly: `**Action Required:** Some Specmatic tests failed because no valid license was available. If you have a license, please share its path or add it under your home .specmatic directory.`
@@ -107,6 +108,7 @@ Once the first spec has been extracted, the agent must execute these phases in o
 13. If Docker is unavailable, stop only after clearly reporting that extraction and refinement are done, the runnable script and README have been prepared, and the next blocked step is the live Specmatic loop.
 
 Do not treat annotation-only cleanup as the full post-extraction workflow.
+Do not treat a successful `specmatic validate` run as completion of the feedback loop.
 Do not end the task after exporting `openapi.yaml` unless the user explicitly asks for extraction only.
 Do not claim the spec was "extracted" if the file was primarily authored by hand outside the framework generator/export path.
 

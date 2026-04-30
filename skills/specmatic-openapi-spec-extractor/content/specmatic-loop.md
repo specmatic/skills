@@ -37,6 +37,7 @@ Rules:
 - As soon as extraction and initial refinement succeed, move toward the Specmatic loop.
 - Do not stop after extraction unless the user explicitly asked for extraction-only output.
 - Do not wait for Docker confirmation before the first loop attempt.
+- Do not stop after `specmatic validate`. Validation is only a preflight check and does not test the live app.
 - Run the Specmatic loop only through the shell/Docker commands documented in this skill.
 - Do not use Specmatic MCP tools or any alternate Specmatic integration when this skill is active.
 
@@ -47,7 +48,8 @@ Follow this sequence strictly:
 `prepare Specmatic setup -> run validate -> run targeted tests -> fix mismatches -> repeat per batch -> final full run`
 
 Execution rule:
-- `prepare Specmatic setup`, `run validate`, `run targeted tests`, and `final full run` mean executing the documented `docker pull`, `docker run`, and shell commands from this skill.
+- `prepare Specmatic setup`, `run validate`, `run targeted tests`, and `final full run` mean executing the documented image-resolution, `docker run`, and shell commands from this skill.
+- `run validate` means preflight validation only. It must be followed by a real `specmatic test` attempt against the running SUT unless a documented blocker prevents that step.
 - Do not replace those steps with Specmatic MCP calls.
 - Use `host.docker.internal` as the supported default hostname for the host-run SUT.
 - On Linux, add `--add-host host.docker.internal:host-gateway` to Specmatic `docker run` commands.

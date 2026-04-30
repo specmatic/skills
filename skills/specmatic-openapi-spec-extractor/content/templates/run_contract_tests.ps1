@@ -59,8 +59,6 @@ function Prepare-License {
     Copy-Item -LiteralPath $sourceLicense -Destination (Join-Path $LocalLicenseDir $script:LicenseFileName) -Force
 }
 
-<<<<<<< Updated upstream
-=======
 function Sync-SpecmaticLicenseConfig {
     if (-not $script:LicenseFileName) {
         return
@@ -159,8 +157,6 @@ function Invoke-SpecmaticDockerCommand {
 
     throw ($output | Out-String).Trim()
 }
-
->>>>>>> Stashed changes
 $IsLinuxHost = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
     [System.Runtime.InteropServices.OSPlatform]::Linux
 )
@@ -172,13 +168,8 @@ if ($IsLinuxHost) {
 
 New-Item -ItemType Directory -Path $ReportsDir -Force | Out-Null
 Prepare-License
-<<<<<<< Updated upstream
-
-docker pull $SpecmaticDockerImage
-=======
 Sync-SpecmaticLicenseConfig
 Resolve-EnterpriseImage
->>>>>>> Stashed changes
 
 # Optional runtime throttle for slow or overly large suites.
 # Add this only after you observe too many generated test combinations:

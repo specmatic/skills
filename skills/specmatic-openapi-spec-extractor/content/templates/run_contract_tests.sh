@@ -97,13 +97,8 @@ fi
 
 mkdir -p "${REPORTS_DIR}"
 prepare_license
-<<<<<<< Updated upstream
-
-docker pull "${SPECMATIC_DOCKER_IMAGE}"
-=======
 sync_specmatic_license_config
 resolve_enterprise_image
->>>>>>> Stashed changes
 
 # Optional runtime throttle for slow or overly large suites.
 # Add this only after you observe too many generated test combinations:

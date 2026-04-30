@@ -295,6 +295,7 @@ Generation rules:
 - Additional top-level keys are allowed and should be treated as example data fields carried alongside the request/response pair.
 
 Run `specmatic validate` before running tests so Specmatic validates the discovered specifications and examples together from the mounted workspace.
+This is only a preflight step. A successful `validate` run does not complete the skill; it must be followed by `specmatic test` against the running SUT.
 
 macOS:
 
