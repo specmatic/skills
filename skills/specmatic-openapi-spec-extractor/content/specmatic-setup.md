@@ -173,6 +173,51 @@ Rules:
 - Do not add examples for `400` scenarios. Let Specmatic generate invalid-request coverage through schema resiliency tests.
 - Use [content/specmatic-external-example.schema.json](content/specmatic-external-example.schema.json) as the source of truth for example file structure.
 
+## Downstream Stub Setup
+
+If the SUT depends on one or more other HTTP APIs during contract tests, use a Specmatic stub for each required dependency on the exact host port expected by the SUT.
+
+Directory conventions:
+
+- dependency contract: `./specmatic/<dependency-name>.yaml`
+- stub examples: `./specmatic/stub-<dependency-name>_examples/`
+
+Example stub startup commands.
+
+macOS/Linux:
+
+```bash
+docker run --rm \
+  -p 8090:8090 \
+  -v "$(pwd):/usr/src/app" \
+  -w /usr/src/app \
+  specmatic/enterprise:latest stub \
+  --host=0.0.0.0 \
+  --port=8090 \
+  "specmatic/<dependency-name>.yaml"
+```
+
+Windows PowerShell:
+
+```powershell
+docker run --rm `
+  -p 8090:8090 `
+  -v "${PWD}:/usr/src/app" `
+  -w /usr/src/app `
+  specmatic/enterprise:latest stub `
+  --host=0.0.0.0 `
+  --port=8090 `
+  "specmatic/<dependency-name>.yaml"
+```
+
+Rules:
+
+- Repeat this setup for each downstream dependency needed by the current batch.
+- Match the exact dependency port the SUT is trying to call for each dependency, for example `8090`, `8091`, or another fixed port.
+- Generate concrete stub examples for the downstream success paths the SUT needs from each dependency.
+- Use stub examples to model required downstream state before rerunning the batch.
+- If the final runner needs to start multiple dependency stubs automatically, wire that into `PRE_TEST_SETUP_CMD`.
+
 ## External Example Structure
 
 Generate each external example file as a single JSON object that matches [content/specmatic-external-example.schema.json](content/specmatic-external-example.schema.json).

@@ -53,6 +53,28 @@ Execution rule:
 - On Linux, add `--add-host host.docker.internal:host-gateway` to Specmatic `docker run` commands.
 - On Windows/macOS, do not add extra host mapping.
 
+## Downstream Dependency Rule
+
+When contract tests fail because the SUT cannot reach one or more downstream HTTP dependencies, treat that as a fixable test-environment issue before classifying the batch as runtime-broken.
+
+Typical symptoms:
+
+- `connection refused`
+- outbound calls to `http://localhost:<port>` or another fixed dependency base URL
+- SUT `500` responses caused by unavailable downstream APIs
+- missing downstream state that can be modeled through stub examples
+
+Required behavior:
+
+1. Identify all downstream dependency hosts and ports required by the current batch.
+2. Find or generate a dependency contract for each required downstream.
+3. Start a Specmatic stub for each required downstream on its expected port.
+4. Add or update stub examples under `./specmatic/stub-<dependency-name>_examples/` for each required downstream.
+5. Rerun the relevant validation or targeted contract-test batch only after the required downstream stub set is available.
+6. Only after that rerun should the agent classify remaining failures as fixable or non-fixable.
+
+Do not leave a batch in a failed state just because one or more stub-able downstream dependencies were missing.
+
 ## Batch Strategy
 
 Do not test all APIs at once by default.
@@ -97,12 +119,14 @@ Always apply fixes in this order:
 1. Source annotations/decorators/config
 2. OpenAPI overlay
 3. Specmatic stubs and stub examples
+4. Non-fixable runtime issue report
 
 Rules:
 
 - Always attempt source-level fixes first.
 - Source-level fixes for this skill mean extraction-related annotations, decorators, comments, and non-behavioral config only.
 - Use overlay only when source metadata cannot express the required contract.
+- If the SUT is failing because one or more downstream dependencies are unavailable, attempt Specmatic stubs for the full required dependency set before reporting a runtime blocker.
 - Do not change implementation behavior or method signatures as part of the fix loop unless the user explicitly asks for implementation changes.
 - If a mismatch cannot be fixed via source metadata or overlay, classify it as non-fixable and report it.
 - Do not create spec-rewrite scripts that mutate the generated OpenAPI as a workaround.

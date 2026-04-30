@@ -66,6 +66,7 @@ Document:
   - `PATH='/users'`
   - `PATH='/users/*'`
   - `PATH='/users,/products'`
+- how downstream dependency stubs are handled when the SUT makes outbound HTTP calls during contract tests, including multiple dependencies in the same batch
 - how license-limited results are reported when no valid license is available:
   - total tests run
   - passed
@@ -103,6 +104,10 @@ Verify all of the following:
 - the final report calls out how many tests failed due to license limits
 - the final summary states that full hardening could not be completed because a valid license was not available
 
+6. Downstream dependency completion
+- if the SUT depends on external HTTP APIs, the hardening loop attempts Specmatic stubs for all required downstream dependencies before reporting runtime blockers
+- the final summary distinguishes downstream-stubbed fixes from remaining non-fixable runtime issues after the required downstream stub set was available
+
 ## Common Issues After Extraction
 
 | Issue | Symptom | Fix |
@@ -112,6 +117,7 @@ Verify all of the following:
 | Duplicate or missing `operationId` values | Ambiguous failures in reports and poor traceability | Ensure each operation has a stable, unique `operationId` |
 | Missing auth metadata | Protected endpoints fail with 401 or 403 during tests | Add security schemes and required auth headers in test setup |
 | Stub specs without concrete examples | Stub starts but returns unusable data or invalid responses | Add at least one concrete `examples` entry per stub response payload |
+| Contract tests fail because the SUT cannot reach downstream APIs | The app returns `500` after outbound calls to one or more fixed dependency hosts or ports such as `localhost:8090` and `localhost:8091` | Stand up a Specmatic stub for each required downstream on its expected port, add concrete stub examples for each dependency, and rerun the affected batch |
 | Enum and nullability drift | Tests fail with enum or nullability mismatches | Align source annotations or validators with runtime behavior; use overlay only when source metadata cannot express it |
 
 ## What Not to Do
