@@ -153,27 +153,68 @@ docker_preflight() {
   exit 2
 }
 
-docker_run_specmatic() {
+generate_specmatic_config() {
+  local test_base_url="http://${TEST_BASE_URL_HOST}:${PORT}"
+  local mock_base_url="http://0.0.0.0:${PORT}"
+  cat <<EOF
+version: 3
+systemUnderTest:
+  service:
+    definitions:
+      - definition:
+          source:
+            filesystem:
+              directory: .
+          specs:
+            - ${SPEC_BASENAME}
+    runOptions:
+      openapi:
+        type: test
+        baseUrl: ${test_base_url}
+dependencies:
+  services:
+    - service:
+        definitions:
+          - definition:
+              source:
+                filesystem:
+                  directory: .
+              specs:
+                - ${SPEC_BASENAME}
+        runOptions:
+          openapi:
+            type: mock
+            baseUrl: ${mock_base_url}
+specmatic:
+  settings:
+    test:
+      schemaResiliencyTests: positiveOnly
+      maxTestRequestCombinations: ${MAX_TEST_REQUEST_COMBINATIONS}
+      lenientMode: true
+    mock:
+      lenientMode: true
+EOF
+}
+
+docker_run_specmatic_with_config() {
   local command="$1"
-  local specmatic_args=()
   shift
 
-  if [[ "${command}" == "test" ]]; then
-    specmatic_args+=(--testBaseURL "http://${TEST_BASE_URL_HOST}:${PORT}")
+  if [ -t 0 ]; then
+    echo "Specmatic config must be piped into docker_run_specmatic_with_config." >&2
+    exit 2
   fi
 
   docker run \
     --rm \
+    -i \
+    --entrypoint sh \
     --add-host "${TEST_BASE_URL_HOST}:host-gateway" \
     -v "${SPEC_DIR}:/usr/src/app" \
     -w /usr/src/app \
     "$@" \
     "${SPECMATIC_DOCKER_IMAGE}" \
-    "${command}" \
-    --port "${PORT}" \
-    "${SPEC_BASENAME}" \
-    --lenient \
-    "${specmatic_args[@]}"
+    -c "cat > /tmp/specmatic.yaml && specmatic ${command} --config /tmp/specmatic.yaml --lenient"
 }
 
 random_port() {
@@ -262,17 +303,7 @@ for ((attempt = 1; attempt <= MAX_AUTO_PORT_ATTEMPTS; attempt++)); do
   echo "Using Specmatic port: ${PORT}"
   echo "Starting mock for ${SPEC_FILE}"
 
-  docker run \
-    --rm \
-    -p "${PORT}:${PORT}" \
-    --name "${MOCK_CONTAINER_NAME}" \
-    -v "${SPEC_DIR}:/usr/src/app" \
-    -w /usr/src/app \
-    "${SPECMATIC_DOCKER_IMAGE}" \
-    mock \
-    --port "${PORT}" \
-    "${SPEC_BASENAME}" \
-    --lenient >"${MOCK_LOG}" 2>&1 &
+  generate_specmatic_config | docker_run_specmatic_with_config mock -p "${PORT}:${PORT}" --name "${MOCK_CONTAINER_NAME}" >"${MOCK_LOG}" 2>&1 &
   MOCK_PID=$!
 
   deadline=$((SECONDS + STARTUP_TIMEOUT_SECONDS))
@@ -314,7 +345,7 @@ for ((attempt = 1; attempt <= MAX_AUTO_PORT_ATTEMPTS; attempt++)); do
 done
 
 echo "Running loop test for ${SPEC_FILE}"
-if ! docker_run_specmatic test -e "MAX_TEST_REQUEST_COMBINATIONS=${MAX_TEST_REQUEST_COMBINATIONS}" >"${TEST_LOG}" 2>&1; then
+if ! generate_specmatic_config | docker_run_specmatic_with_config test >"${TEST_LOG}" 2>&1; then
   stop_mock
   echo "Loop test failed." >&2
   print_log_tail "test" "${TEST_LOG}"
