@@ -168,6 +168,8 @@ Use the smallest amount of reference material needed.
   Open [content/specmatic-loop.md](content/specmatic-loop.md).
 - When generating `specmatic.yaml`, examples, overlays, or deterministic setup:
   Open [content/specmatic-setup.md](content/specmatic-setup.md).
+- When creating or updating external example files:
+  Also open [content/specmatic-external-example.schema.json](content/specmatic-external-example.schema.json).
 - When preparing final scripts, docs, or acceptance checks:
   Open [content/specmatic-deliverables.md](content/specmatic-deliverables.md).
 
@@ -177,4 +179,5 @@ Do not bulk-read all reference files. Identify the framework first, then open on
 
 - [content/specmatic-loop.md](content/specmatic-loop.md): post-extraction loop, Docker gate, batching, and fix order
 - [content/specmatic-setup.md](content/specmatic-setup.md): `specmatic.yaml`, overlays, examples, licensing, and deterministic setup
+- [content/specmatic-external-example.schema.json](content/specmatic-external-example.schema.json): exact JSON schema for external example file structure
 - [content/specmatic-deliverables.md](content/specmatic-deliverables.md): final scripts, README expectations, acceptance checks, and troubleshooting

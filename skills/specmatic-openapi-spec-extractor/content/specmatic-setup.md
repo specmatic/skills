@@ -171,6 +171,82 @@ Rules:
 
 - Regenerate or update examples for each batch so payloads match the deterministic data for that run.
 - Do not add examples for `400` scenarios. Let Specmatic generate invalid-request coverage through schema resiliency tests.
+- Use [content/specmatic-external-example.schema.json](content/specmatic-external-example.schema.json) as the source of truth for example file structure.
+
+## External Example Structure
+
+Generate each external example file as a single JSON object that matches [content/specmatic-external-example.schema.json](content/specmatic-external-example.schema.json).
+
+Standard example shape:
+
+```json
+{
+  "http-request": {
+    "method": "POST",
+    "path": "/users",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "name": "Jane"
+    }
+  },
+  "http-response": {
+    "status": 201,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "id": 10,
+      "name": "Jane"
+    }
+  },
+  "name": "create user success"
+}
+```
+
+Partial example shape:
+
+```json
+{
+  "partial": {
+    "http-request": {
+      "method": "GET",
+      "path": "/users/10"
+    },
+    "http-response": {
+      "status": 200,
+      "body": {
+        "id": 10
+      }
+    }
+  },
+  "name": "get user partial"
+}
+```
+
+Generation rules:
+
+- `http-request` and `http-response` are required for standard examples.
+- `partial` is required for partial examples, and its nested object must contain `http-request` and `http-response`.
+- `http-request.method` is required.
+- `http-response.status` is required.
+- `http-request.body` and `http-response.body` may be any valid JSON value.
+- `headers` maps use string values.
+- `query` is a JSON object keyed by query parameter name.
+- `form-fields` is a JSON object keyed by form field name.
+- `multipart-formdata` entries must use either:
+  - `name` + `content`
+  - `name` + `filename`
+- `bodyRegex` belongs inside `http-request`.
+- Optional top-level metadata supported by the parser includes:
+  - `name`
+  - `transient`
+  - `delay-in-seconds`
+  - `delay-in-milliseconds`
+  - `http-stub-id`
+  - `id`
+- Additional top-level keys are allowed and should be treated as example data fields carried alongside the request/response pair.
 
 Run `specmatic validate` before running tests so Specmatic validates the discovered specifications and examples together from the mounted workspace.
 

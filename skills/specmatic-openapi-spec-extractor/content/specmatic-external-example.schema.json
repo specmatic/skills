@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specmatic.dev/schemas/specmatic-external-example.schema.json",
+  "title": "Specmatic External Example",
+  "description": "Schema for Specmatic external example files used by this skill.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/standardExample"
+    },
+    {
+      "$ref": "#/$defs/partialExample"
+    }
+  ],
+  "$defs": {
+    "anyValue": true,
+    "stringMap": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "queryMap": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "string",
+          "number",
+          "integer",
+          "boolean"
+        ]
+      }
+    },
+    "multipartContent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "content": true,
+        "contentType": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "multipartFile": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "filename": {
+          "type": "string"
+        },
+        "contentType": {
+          "type": "string"
+        },
+        "contentEncoding": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "filename"
+      ],
+      "additionalProperties": false
+    },
+    "multipartPart": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/multipartContent"
+        },
+        {
+          "$ref": "#/$defs/multipartFile"
+        }
+      ]
+    },
+    "requestSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "query": {
+          "$ref": "#/$defs/queryMap"
+        },
+        "headers": {
+          "$ref": "#/$defs/stringMap"
+        },
+        "body": true,
+        "form-fields": {
+          "$ref": "#/$defs/stringMap"
+        },
+        "multipart-formdata": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/multipartPart"
+          }
+        },
+        "bodyRegex": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "method"
+      ],
+      "additionalProperties": false
+    },
+    "responseSchema": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "headers": {
+          "$ref": "#/$defs/stringMap"
+        },
+        "body": true,
+        "externalisedResponseCommand": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "metadataProperties": {
+      "name": {
+        "type": "string"
+      },
+      "transient": {
+        "type": "boolean"
+      },
+      "delay-in-seconds": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "delay-in-milliseconds": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "http-stub-id": {
+        "type": "string"
+      },
+      "id": {
+        "type": "string"
+      }
+    },
+    "standardExample": {
+      "type": "object",
+      "properties": {
+        "http-request": {
+          "$ref": "#/$defs/requestSchema"
+        },
+        "http-response": {
+          "$ref": "#/$defs/responseSchema"
+        },
+        "name": {
+          "type": "string"
+        },
+        "transient": {
+          "type": "boolean"
+        },
+        "delay-in-seconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "delay-in-milliseconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "http-stub-id": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "http-request",
+        "http-response"
+      ],
+      "additionalProperties": true
+    },
+    "partialExample": {
+      "type": "object",
+      "properties": {
+        "partial": {
+          "type": "object",
+          "properties": {
+            "http-request": {
+              "$ref": "#/$defs/requestSchema"
+            },
+            "http-response": {
+              "$ref": "#/$defs/responseSchema"
+            },
+            "name": {
+              "type": "string"
+            },
+            "transient": {
+              "type": "boolean"
+            },
+            "delay-in-seconds": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "delay-in-milliseconds": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "http-stub-id": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "http-request",
+            "http-response"
+          ],
+          "additionalProperties": true
+        },
+        "name": {
+          "type": "string"
+        },
+        "transient": {
+          "type": "boolean"
+        },
+        "delay-in-seconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "delay-in-milliseconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "http-stub-id": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "partial"
+      ],
+      "additionalProperties": true
+    }
+  }
+}
