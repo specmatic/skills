@@ -59,6 +59,37 @@ prepare_license() {
   cp "${source_license}" "${LOCAL_LICENSE_DIR}/${LICENSE_FILE_NAME}"
 }
 
+sync_specmatic_license_config() {
+  local desired_path
+  local temp_file
+
+  [[ -n "${LICENSE_FILE_NAME}" ]] || return 0
+  [[ -f "${SPECMATIC_CONFIG}" ]] || return 0
+
+  desired_path="/usr/src/app/.specmatic/${LICENSE_FILE_NAME}"
+
+  if grep -Fq "${desired_path}" "${SPECMATIC_CONFIG}"; then
+    return 0
+  fi
+
+  if grep -Eq '^[[:space:]]*path:[[:space:]]*/usr/src/app/\.specmatic/' "${SPECMATIC_CONFIG}"; then
+    perl -0pi -e "s#(^[ \t]*path:[ \t]*/usr/src/app/\\.specmatic/)[^\n]+#\${1}${LICENSE_FILE_NAME}#m" "${SPECMATIC_CONFIG}"
+    return 0
+  fi
+
+  temp_file="$(mktemp)"
+  awk -v license_path="${desired_path}" '
+    {
+      print $0
+      if ($0 == "specmatic:") {
+        print "  license:"
+        print "    path: " license_path
+      }
+    }
+  ' "${SPECMATIC_CONFIG}" >"${temp_file}"
+  mv "${temp_file}" "${SPECMATIC_CONFIG}"
+}
+
 DOCKER_ARGS=(run --rm)
 if [[ "$(uname -s)" == "Linux" ]]; then
   DOCKER_ARGS+=(--add-host host.docker.internal:host-gateway)
@@ -66,8 +97,13 @@ fi
 
 mkdir -p "${REPORTS_DIR}"
 prepare_license
+<<<<<<< Updated upstream
 
 docker pull "${SPECMATIC_DOCKER_IMAGE}"
+=======
+sync_specmatic_license_config
+resolve_enterprise_image
+>>>>>>> Stashed changes
 
 # Optional runtime throttle for slow or overly large suites.
 # Add this only after you observe too many generated test combinations:

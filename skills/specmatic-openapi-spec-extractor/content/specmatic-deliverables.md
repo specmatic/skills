@@ -36,6 +36,7 @@ Rules:
 - For simple applications, leave `PRE_TEST_SETUP_CMD` empty by default and do not invent a fake setup step.
 - Do not hard-code `maxTestRequestCombinations` into the config by default.
 - Both scripts must sniff for a license under the user home `.specmatic` directory, copy the discovered file into the current working directory under `./.specmatic/` when needed, and mount that directory into Docker.
+- When a license is discovered, both scripts must also sync `specmatic.yaml` so `specmatic.license.path` points at `/usr/src/app/.specmatic/<license-file-name>` before running Specmatic.
 - If a license is found, generated `specmatic.yaml` must include `specmatic.license.path: /usr/src/app/.specmatic/<license-file-name>`.
 - If no license is found, omit `specmatic.license` entirely.
 - Bash runner requirements:

@@ -75,6 +75,7 @@ This skill should win over a generic extraction-only skill when:
 - If command output indicates a Docker-specific failure such as Docker not being installed, Docker not being on `PATH`, Docker Desktop not being available, or the Docker daemon / engine not running, stop and ask the user exactly:
   `**Action Required:** Please start the Docker engine, then confirm once it is running.`
 - If no license is found, continue the Specmatic feedback loop without a license.
+- If a license is found under the home `.specmatic` directory or provided directly by the user, ensure the mounted file is also wired into `specmatic.yaml` through `specmatic.license.path` before rerunning Specmatic.
 - Treat any Specmatic trial-limit or enterprise-feature-limit hit as a licensing-caused test failure, not as a hard workflow blocker.
 - If a Specmatic command fails for a trial-license or enterprise-feature limit reason, do not treat that as a hard blocker by itself.
 - Call out that those failures are due to licensing, report how many tests ran, passed, failed, and failed due to license limits, and ask the user exactly:

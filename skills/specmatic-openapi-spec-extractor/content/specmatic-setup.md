@@ -112,6 +112,7 @@ specmatic:
   - macOS/Linux: `~/.specmatic`
   - Windows: `$HOME/.specmatic` or `%USERPROFILE%\\.specmatic`
 - Generated runners should sniff that directory, copy the discovered license into the current working directory under `./.specmatic/` when needed, and mount that directory into Docker.
+- When a license is discovered, generated runners must also sync `specmatic.yaml` so `specmatic.license.path` points at `/usr/src/app/.specmatic/<license-file-name>` before running Specmatic.
 - If the license file is absent, omit `specmatic.license` entirely and let Specmatic use its built-in trial license.
 - If the license file is absent, do not stop the loop up front. Continue with the built-in trial.
 - If a later Specmatic command fails because of a trial-license or enterprise-feature limit, ask the user for either:
