@@ -6,24 +6,32 @@ Use this guide when preparing `specmatic.yaml`, overlays, external examples, or 
 
 Follow this sequence:
 
-`pull image -> create schema-valid config -> configure examples/overlay -> add deterministic setup -> run validate`
+`resolve image -> create schema-valid config -> configure examples/overlay -> add deterministic setup -> run validate`
 
-## Pull Image
+## Image Selection
 
-Always pull the latest image before starting Specmatic contract tests or stubs:
+Before starting Specmatic contract tests or stubs, first look for a locally available Docker image with `specmatic` in its name.
 
 ```bash
-docker pull specmatic/enterprise:latest
+docker image ls --format '{{.Repository}}:{{.Tag}}' | grep -i specmatic
 ```
 
 ```powershell
-docker pull specmatic/enterprise:latest
+docker image ls --format '{{.Repository}}:{{.Tag}}' | Select-String -Pattern specmatic
 ```
 
 Execution rule:
 - Use shell/Docker commands exactly as documented in this skill for validation, stubs, and test execution.
 - Do not use Specmatic MCP tools as a substitute for these commands.
 - Prefer OS-appropriate commands: Bash on macOS/Linux and PowerShell on Windows.
+- Follow [content/specmatic-image-selection.md](content/specmatic-image-selection.md) as the source of truth for this flow.
+- Try the first local image whose repository or tag contains `specmatic`.
+- Tell the user which local image is being used.
+- Use that exact image name directly for the workflow.
+- Do not do a separate `--version` probe and do not infer image validity from Specmatic command output.
+- If no local `specmatic` image exists, tell the user the workflow is trying to pull `specmatic/enterprise:latest`.
+- If the pull fails, ask the user to pull the image themselves and share the pulled image name so the workflow can continue.
+- In all documented `docker run` examples below, replace `<resolved-specmatic-image>` with the concrete image chosen by this flow.
 
 ## `specmatic.yaml` Shape
 
@@ -80,7 +88,7 @@ systemUnderTest:
           - spec:
               id: <your-api-id>
               # overlayFilePath: ./specmatic/openapi.overlay.yaml
-              # filter: PATH!='/internal/metrics'
+              # filter: PATH='/users'
     data:
       examples:
         - directories:
@@ -192,7 +200,7 @@ docker run --rm \
   -p 8090:8090 \
   -v "$(pwd):/usr/src/app" \
   -w /usr/src/app \
-  specmatic/enterprise:latest stub \
+  <resolved-specmatic-image> stub \
   --host=0.0.0.0 \
   --port=8090 \
   "specmatic/<dependency-name>.yaml"
@@ -205,7 +213,7 @@ docker run --rm `
   -p 8090:8090 `
   -v "${PWD}:/usr/src/app" `
   -w /usr/src/app `
-  specmatic/enterprise:latest stub `
+  <resolved-specmatic-image> stub `
   --host=0.0.0.0 `
   --port=8090 `
   "specmatic/<dependency-name>.yaml"
@@ -304,7 +312,7 @@ docker run --rm \
   -v "$(pwd):/usr/src/app" \
   -v "$(pwd)/.specmatic:/usr/src/app/.specmatic" \
   -w /usr/src/app \
-  specmatic/enterprise:latest validate
+  <resolved-specmatic-image> validate
 ```
 
 Linux:
@@ -315,7 +323,7 @@ docker run --rm \
   -v "$(pwd):/usr/src/app" \
   -v "$(pwd)/.specmatic:/usr/src/app/.specmatic" \
   -w /usr/src/app \
-  specmatic/enterprise:latest validate
+  <resolved-specmatic-image> validate
 ```
 
 Windows PowerShell:
@@ -325,7 +333,7 @@ docker run --rm `
   -v "${PWD}:/usr/src/app" `
   -v "${PWD}/.specmatic:/usr/src/app/.specmatic" `
   -w /usr/src/app `
-  specmatic/enterprise:latest validate
+  <resolved-specmatic-image> validate
 ```
 
 If examples are in non-default locations, ensure `specmatic.yaml` references those directories correctly before running `validate`. The same `validate` command should still be used; do not switch back to `examples validate`.
@@ -340,7 +348,7 @@ docker run --rm \
   -v "$(pwd)/.specmatic:/usr/src/app/.specmatic" \
   -v "$(pwd)/specmatic.yaml:/usr/src/app/specmatic.yaml" \
   -v "$(pwd)/build/reports:/usr/src/app/build/reports" \
-  specmatic/enterprise:latest test \
+  <resolved-specmatic-image> test \
   --host=host.docker.internal \
   --port="<SUT_PORT>"
 ```
@@ -354,7 +362,7 @@ docker run --rm \
   -v "$(pwd)/.specmatic:/usr/src/app/.specmatic" \
   -v "$(pwd)/specmatic.yaml:/usr/src/app/specmatic.yaml" \
   -v "$(pwd)/build/reports:/usr/src/app/build/reports" \
-  specmatic/enterprise:latest test \
+  <resolved-specmatic-image> test \
   --host=host.docker.internal \
   --port="<SUT_PORT>"
 ```
@@ -367,7 +375,7 @@ docker run --rm `
   -v "${PWD}/.specmatic:/usr/src/app/.specmatic" `
   -v "${PWD}/specmatic.yaml:/usr/src/app/specmatic.yaml" `
   -v "${PWD}/build/reports:/usr/src/app/build/reports" `
-  specmatic/enterprise:latest test `
+  <resolved-specmatic-image> test `
   --host=host.docker.internal `
   --port="<SUT_PORT>"
 ```

@@ -10,12 +10,14 @@ $SpecmaticDir = Join-Path $RepoRoot "specmatic"
 $SpecmaticConfig = Join-Path $RepoRoot "specmatic.yaml"
 $ReportsDir = Join-Path $RepoRoot "build/reports"
 $LocalLicenseDir = Join-Path $RepoRoot ".specmatic"
-$SpecmaticDockerImage = if ($env:SPECMATIC_DOCKER_IMAGE) { $env:SPECMATIC_DOCKER_IMAGE } else { "specmatic/enterprise:latest" }
+$UserSpecifiedSpecmaticImage = if ($env:SPECMATIC_DOCKER_IMAGE) { $env:SPECMATIC_DOCKER_IMAGE } else { $null }
+$SpecmaticDockerImage = $null
 $SutPort = if ($env:SUT_PORT) { $env:SUT_PORT } else { "<SUT_PORT>" }
 $PreTestSetupCommand = if ($env:PRE_TEST_SETUP_CMD) { $env:PRE_TEST_SETUP_CMD } else { $null }
 $HomeDir = if ($env:HOME) { $env:HOME } elseif ($env:USERPROFILE) { $env:USERPROFILE } else { [Environment]::GetFolderPath("UserProfile") }
 $HomeLicenseDir = Join-Path $HomeDir ".specmatic"
 $LicenseFileName = $null
+$PullSourceImage = "specmatic/enterprise:latest"
 
 function Find-LicenseFile {
     if (-not (Test-Path -LiteralPath $HomeLicenseDir -PathType Container)) {
@@ -94,7 +96,6 @@ function Sync-SpecmaticLicenseConfig {
     )
     Set-Content -LiteralPath $SpecmaticConfig -Value $updated
 }
-
 function Test-ImageExistsLocally {
     param([Parameter(Mandatory = $true)][string]$Image)
 
@@ -185,35 +186,37 @@ if ($PreTestSetupCommand) {
     }
 }
 
-$ValidateArgs = $DockerArgs + @(
-    "-v", "${RepoRoot}:/usr/src/app",
-    "-w", "/usr/src/app"
-)
+try {
+    $ValidateArgs = $DockerArgs + @(
+        "-v", "${RepoRoot}:/usr/src/app",
+        "-w", "/usr/src/app"
+    )
 
-$TestArgs = $DockerArgs + @(
-    "-v", "${SpecmaticDir}:/usr/src/app/specmatic",
-    "-v", "${SpecmaticConfig}:/usr/src/app/specmatic.yaml",
-    "-v", "${ReportsDir}:/usr/src/app/build/reports",
-    "-w", "/usr/src/app"
-)
+    $TestArgs = $DockerArgs + @(
+        "-v", "${SpecmaticDir}:/usr/src/app/specmatic",
+        "-v", "${SpecmaticConfig}:/usr/src/app/specmatic.yaml",
+        "-v", "${ReportsDir}:/usr/src/app/build/reports",
+        "-w", "/usr/src/app"
+    )
 
-if ($LicenseFileName) {
-    $ValidateArgs += @("-v", "${LocalLicenseDir}:/usr/src/app/.specmatic")
-    $TestArgs += @("-v", "${LocalLicenseDir}:/usr/src/app/.specmatic")
+    if ($LicenseFileName) {
+        $ValidateArgs += @("-v", "${LocalLicenseDir}:/usr/src/app/.specmatic")
+        $TestArgs += @("-v", "${LocalLicenseDir}:/usr/src/app/.specmatic")
+    }
+
+    Invoke-SpecmaticDockerCommand -DockerArgs $ValidateArgs -SpecmaticArgs @("validate")
+
+    Invoke-SpecmaticDockerCommand -DockerArgs $TestArgs -SpecmaticArgs @(
+        "test",
+        "--host=host.docker.internal",
+        "--port=$SutPort"
+    )
+
+    Write-Host "Done. HTML report: $ReportsDir/specmatic/html/index.html"
+} catch {
+    if ($_.Exception.Message.StartsWith("**Action Required:**")) {
+        throw $_.Exception.Message
+    }
+
+    throw $_.Exception.Message
 }
-
-$ValidateArgs += @(
-    $SpecmaticDockerImage,
-    "validate"
-)
-& docker @ValidateArgs
-
-$TestArgs += @(
-    $SpecmaticDockerImage,
-    "test",
-    "--host=host.docker.internal",
-    "--port=$SutPort"
-)
-& docker @TestArgs
-
-Write-Host "Done. HTML report: $ReportsDir/specmatic/html/index.html"

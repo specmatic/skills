@@ -71,7 +71,7 @@ This skill should win over a generic extraction-only skill when:
 - Linux-only runner rule: add `--add-host host.docker.internal:host-gateway` to Specmatic `docker run` commands so `host.docker.internal` resolves the same way it does on Docker Desktop.
 - Windows/macOS runner rule: run Docker without extra host mapping.
 - Containerized-SUT and Docker Compose networking are out of scope for this iteration.
-- Do not ask the user about Docker availability before attempting the documented Specmatic `docker pull`, `docker run`, validation, or test commands from this skill.
+- Do not ask the user about Docker availability before attempting the documented Specmatic image-resolution, `docker run`, validation, or test commands from this skill.
 - Attempt the Specmatic feedback loop first.
 - If command output indicates a Docker-specific failure such as Docker not being installed, Docker not being on `PATH`, Docker Desktop not being available, or the Docker daemon / engine not running, stop and ask the user exactly:
   `**Action Required:** Please start the Docker engine, then confirm once it is running.`
@@ -173,6 +173,8 @@ Use the smallest amount of reference material needed.
   Open [content/specmatic-loop.md](content/specmatic-loop.md).
 - When generating `specmatic.yaml`, examples, overlays, or deterministic setup:
   Open [content/specmatic-setup.md](content/specmatic-setup.md).
+- When resolving which Docker image to use for Specmatic Enterprise:
+  Also open [content/specmatic-image-selection.md](content/specmatic-image-selection.md).
 - When creating or updating external example files:
   Also open [content/specmatic-external-example.schema.json](content/specmatic-external-example.schema.json).
 - When preparing final scripts, docs, or acceptance checks:
@@ -184,5 +186,6 @@ Do not bulk-read all reference files. Identify the framework first, then open on
 
 - [content/specmatic-loop.md](content/specmatic-loop.md): post-extraction loop, Docker gate, batching, and fix order
 - [content/specmatic-setup.md](content/specmatic-setup.md): `specmatic.yaml`, overlays, examples, licensing, and deterministic setup
+- [content/specmatic-image-selection.md](content/specmatic-image-selection.md): exact Docker image selection flow for Specmatic Enterprise
 - [content/specmatic-external-example.schema.json](content/specmatic-external-example.schema.json): exact JSON schema for external example file structure
 - [content/specmatic-deliverables.md](content/specmatic-deliverables.md): final scripts, README expectations, acceptance checks, and troubleshooting
