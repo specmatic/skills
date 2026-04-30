@@ -32,7 +32,12 @@ find_license_file() {
     fi
   done
 
-  candidate="$(find "${HOME_LICENSE_DIR}" -maxdepth 1 -type f \( -iname '*license*' -o -iname '*.lic' \) | head -n 1 || true)"
+  candidate="$(find "${HOME_LICENSE_DIR}" -maxdepth 1 -type f \( \
+    -iname '*license*' -o \
+    -iname '*.lic' -o \
+    -iname 'specmatic*.txt' \
+  ) | head -n 1 || true)"
+
   if [[ -n "${candidate}" ]]; then
     printf '%s\n' "${candidate}"
     return 0
