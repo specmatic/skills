@@ -7,6 +7,12 @@ description: Use when asked to identify and fix errors in an OpenAPI specificati
 
 Use this skill when the task is to diagnose an OpenAPI specification that is preventing it from running as mock or test.
 
+## Reading Rule
+
+- Read this entire `SKILL.md` before taking any action.
+- Do not assume the workflow is complete until the end of the file has been read.
+- Any later instruction that refers to scripts or path resolution is mandatory and overrides earlier assumptions.
+
 ## Canonical Paths
 
 Use these exact paths and file names everywhere in this workflow.
@@ -14,9 +20,23 @@ Use these exact paths and file names everywhere in this workflow.
 - Editable spec copy: `<spec-name>-updated.<ext>`
 - Actions log: `fix-log-<spec-name>-<current-date>.md`
 
+## Script Location Rule
+
+- The loop-test and validation scripts live in the skill bundle directory.
+- Resolve script paths from the fix-openapi-spec skill directory (this directory), not from the current working directory.
+- On MacOS or Linux, use the bash scripts:
+  - **`scripts/run_loop_test.sh`** - runs the loop test
+  - **`scripts/validate_spec.sh`** - validates a spec
+- On Windows, use the PowerShell scripts:
+  - **`scripts/run_loop_test.ps1`** - runs the loop test
+  - **`scripts/validate_spec.ps1`** - validates a spec
+
 ## Workflow State Machine
 
 Phase 1 -> Phase 2 -> Phase 3 -> Phase 4 validation -> STOP for user approval -> Phase 4 fixes only if explicitly approved
+
+- Phase 2 is mandatory and must not be skipped just because the spec parses as YAML or OpenAPI.
+- Do not stop after syntax checks, file copy creation, or structural validation; always run the loop test on the `-updated` spec unless a tool failure, sandbox restriction, or explicit user interruption prevents it.
 
 ## Docker Execution Rule
 
@@ -227,19 +247,3 @@ Guidelines for fixing constraints and examples:
 - After every loop test run: append one loop-run entry to `fix-log-<spec-name>-<current-date>.md`.
 - After every applied fix: append one fix entry to `fix-log-<spec-name>-<current-date>.md`.
 - For every observed `Specmatic Bug` or `Spec Issue`: append one matching classification entry to `fix-log-<spec-name>-<current-date>.md`.
-
-## Available scripts
-
-Note:
-- Scripts for MacOS / Linux require bash
-- Scripts for Windows require powershell
-
-Scripts for MacOS / Linux (requires bash)
-- **`scripts/run_loop_test.sh`** - runs the loop test
-- **`scripts/validate_spec.sh`** - validates a spec
-
-Scripts for Windows (requires powershell)
-- **`scripts/run_loop_test.ps1`** - runs the loop test
-- **`scripts/validate_spec.ps1`** - validates a spec
-
-When running these scripts, resolve the path from the fix-openapi-spec skill bundle directory.

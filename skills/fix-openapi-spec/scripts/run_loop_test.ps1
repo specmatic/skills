@@ -84,6 +84,7 @@ $mockLog = Join-Path ([System.IO.Path]::GetTempPath()) ("specmatic-mock-{0}.log"
 $mockErrLog = Join-Path ([System.IO.Path]::GetTempPath()) ("specmatic-mock-{0}.err.log" -f ([System.Guid]::NewGuid().ToString("N")))
 $testLog = Join-Path ([System.IO.Path]::GetTempPath()) ("specmatic-test-{0}.log" -f ([System.Guid]::NewGuid().ToString("N")))
 $mockContainerName = "specmatic-loop-mock-{0}" -f ([System.Guid]::NewGuid().ToString("N").Substring(0, 12))
+$mockJob = $null
 
 function Get-HttpStatusCode {
     param([Parameter(Mandatory = $true)][string]$Url)
@@ -108,6 +109,12 @@ function Print-LogTail {
 function Stop-MockContainer {
     if ($script:mockContainerName) {
         docker stop $script:mockContainerName *> $null
+    }
+
+    if ($script:mockJob) {
+        Stop-Job -Job $script:mockJob -ErrorAction SilentlyContinue
+        Remove-Job -Job $script:mockJob -Force -ErrorAction SilentlyContinue
+        $script:mockJob = $null
     }
 }
 
@@ -196,6 +203,95 @@ function Test-DockerPreflight {
     }
 }
 
+function Get-SpecmaticConfig {
+    $testBaseUrl = "http://${script:TEST_BASE_URL_HOST}:$script:Port"
+    $mockBaseUrl = "http://0.0.0.0:$script:Port"
+
+    @"
+version: 3
+systemUnderTest:
+  service:
+    definitions:
+      - definition:
+          source:
+            filesystem:
+              directory: .
+          specs:
+            - $script:specBasename
+    runOptions:
+      openapi:
+        type: test
+        baseUrl: $testBaseUrl
+dependencies:
+  services:
+    - service:
+        definitions:
+          - definition:
+              source:
+                filesystem:
+                  directory: .
+              specs:
+                - $script:specBasename
+        runOptions:
+          openapi:
+            type: mock
+            baseUrl: $mockBaseUrl
+specmatic:
+  settings:
+    test:
+      schemaResiliencyTests: positiveOnly
+      maxTestRequestCombinations: $script:MAX_TEST_REQUEST_COMBINATIONS
+      lenientMode: true
+    mock:
+      lenientMode: true
+"@
+}
+
+function New-SpecmaticDockerArgs {
+    param(
+        [Parameter(Mandatory = $true)][string]$Command,
+        [string[]]$ExtraDockerArgs = @()
+    )
+
+    @(
+        "run", "--rm",
+        "-i",
+        "--add-host", "${script:TEST_BASE_URL_HOST}:host-gateway"
+    ) + $ExtraDockerArgs + @(
+        "-v", "${script:specDir}:/usr/src/app",
+        "-w", "/usr/src/app",
+        "--entrypoint", "sh",
+        $script:SPECMATIC_DOCKER_IMAGE,
+        "-c", "cat > /tmp/specmatic.yaml && specmatic $Command --config /tmp/specmatic.yaml --lenient"
+    )
+}
+
+function Start-SpecmaticDockerJobWithConfig {
+    param(
+        [Parameter(Mandatory = $true)][string]$Config,
+        [Parameter(Mandatory = $true)][string[]]$DockerArgs,
+        [Parameter(Mandatory = $true)][string]$OutputLog,
+        [Parameter(Mandatory = $true)][string]$ErrorLog
+    )
+
+    Start-Job -ScriptBlock {
+        param($Config, $DockerArgs, $OutputLog, $ErrorLog)
+        $Config | docker @DockerArgs > $OutputLog 2> $ErrorLog
+        exit $LASTEXITCODE
+    } -ArgumentList $Config, $DockerArgs, $OutputLog, $ErrorLog
+}
+
+function Invoke-SpecmaticDockerWithConfig {
+    param(
+        [Parameter(Mandatory = $true)][string]$Config,
+        [Parameter(Mandatory = $true)][string[]]$DockerArgs,
+        [Parameter(Mandatory = $true)][string]$OutputLog
+    )
+
+    $Config | docker @DockerArgs *> $OutputLog
+    return $LASTEXITCODE
+}
+
 try {
     Test-DockerPreflight
 
@@ -210,26 +306,21 @@ try {
         Write-Host "Using Specmatic port: $Port"
         Write-Host "Starting mock for $SpecFile"
 
-        $mockSpecmaticArgs = @("mock", "--port", $Port, $specBasename, "--lenient")
         foreach ($logPath in @($mockLog, $mockErrLog)) {
             if (Test-Path -LiteralPath $logPath) {
                 Remove-Item -LiteralPath $logPath -Force
             }
         }
 
-        $mockArgs = @(
-            "run", "--rm",
-            "-p", "${Port}:${Port}",
-            "--name", $mockContainerName,
-            "-v", "${specDir}:/usr/src/app",
-            "-w", "/usr/src/app",
-            $SPECMATIC_DOCKER_IMAGE
-        ) + $mockSpecmaticArgs
-        $mockProcess = Start-Process -FilePath "docker" -ArgumentList $mockArgs -RedirectStandardOutput $mockLog -RedirectStandardError $mockErrLog -NoNewWindow -PassThru
+        $mockConfig = Get-SpecmaticConfig
+        $mockArgs = New-SpecmaticDockerArgs -Command "mock" -ExtraDockerArgs @("-p", "${Port}:${Port}", "--name", $mockContainerName)
+        $script:mockJob = Start-SpecmaticDockerJobWithConfig -Config $mockConfig -DockerArgs $mockArgs -OutputLog $mockLog -ErrorLog $mockErrLog
 
         $deadline = (Get-Date).AddSeconds($STARTUP_TIMEOUT_SECONDS)
         while ((Get-Date) -lt $deadline) {
-            if ($mockProcess.HasExited) {
+            if ($script:mockJob.State -ne "Running") {
+                Receive-Job -Job $script:mockJob -Wait -ErrorAction SilentlyContinue | Out-Null
+
                 if ($AutoPort -and $attempt -lt $MAX_AUTO_PORT_ATTEMPTS -and (Test-MockLogHasPortConflict)) {
                     [Console]::Error.WriteLine("Mock could not bind port $Port; retrying with another port.")
                     Stop-MockContainer
@@ -276,19 +367,9 @@ try {
     Write-Host "Mock is healthy."
     Write-Host "Running loop test for $SpecFile"
 
-    $testSpecmaticArgs = @("test", "--port", $Port, $specBasename, "--lenient", "--testBaseURL", "http://${TEST_BASE_URL_HOST}:$Port")
-
-    $testArgs = @(
-        "run", "--rm",
-        "--add-host", "${TEST_BASE_URL_HOST}:host-gateway",
-        "-e", "MAX_TEST_REQUEST_COMBINATIONS=$MAX_TEST_REQUEST_COMBINATIONS",
-        "-v", "${specDir}:/usr/src/app",
-        "-w", "/usr/src/app",
-        $SPECMATIC_DOCKER_IMAGE
-    ) + $testSpecmaticArgs
-    $testExitCode = 0
-    docker @testArgs *> $testLog
-    $testExitCode = $LASTEXITCODE
+    $testConfig = Get-SpecmaticConfig
+    $testArgs = New-SpecmaticDockerArgs -Command "test"
+    $testExitCode = Invoke-SpecmaticDockerWithConfig -Config $testConfig -DockerArgs $testArgs -OutputLog $testLog
 
     if ($testExitCode -ne 0) {
         Stop-MockContainer
