@@ -2,7 +2,9 @@
 
 set -euo pipefail
 
-SPECMATIC_DOCKER_IMAGE="${SPECMATIC_DOCKER_IMAGE:-specmatic/specmatic:latest}"
+USER_SPECIFIED_SPECMATIC_IMAGE="${SPECMATIC_DOCKER_IMAGE:-}"
+SPECMATIC_DOCKER_IMAGE=""
+PULL_SOURCE_IMAGE="specmatic/enterprise:latest"
 
 usage() {
   cat <<EOF
@@ -39,6 +41,49 @@ if ! command -v docker >/dev/null 2>&1; then
   echo "Docker is not installed or not on PATH." >&2
   exit 2
 fi
+
+# Source of truth: ../references/validate-spec-image-selection.md
+# Keep this implementation in sync with that reference and validate_spec.ps1.
+image_exists_locally() {
+  local image="$1"
+  docker image inspect "${image}" >/dev/null 2>&1
+}
+
+resolve_specmatic_image() {
+  local candidate=""
+
+  if [[ -n "${USER_SPECIFIED_SPECMATIC_IMAGE}" ]]; then
+    candidate="${USER_SPECIFIED_SPECMATIC_IMAGE}"
+  else
+    candidate="$(docker image ls --format '{{.Repository}}:{{.Tag}}' | grep -i specmatic | grep -v '^<none>:<none>$' | head -n 1 || true)"
+  fi
+
+  if [[ -n "${candidate}" ]]; then
+    if image_exists_locally "${candidate}"; then
+      SPECMATIC_DOCKER_IMAGE="${candidate}"
+      echo "Using local Specmatic image: ${SPECMATIC_DOCKER_IMAGE}"
+      return 0
+    fi
+
+    if [[ -n "${USER_SPECIFIED_SPECMATIC_IMAGE}" ]]; then
+      echo "**Action Required:** The provided Docker image does not exist locally: ${candidate}. Please provide a valid local image name." >&2
+      return 1
+    fi
+  else
+    echo "No local Docker image with 'specmatic' in its name was found. Trying to pull: ${PULL_SOURCE_IMAGE}"
+  fi
+
+  if docker pull "${PULL_SOURCE_IMAGE}"; then
+    SPECMATIC_DOCKER_IMAGE="${PULL_SOURCE_IMAGE}"
+    echo "Using Specmatic Enterprise image: ${SPECMATIC_DOCKER_IMAGE}"
+    return 0
+  fi
+
+  echo "**Action Required:** I could not find a usable local Specmatic Enterprise image and pulling \`specmatic/enterprise:latest\` failed. Please pull the image yourself, then tell me the image name so I can continue validation." >&2
+  return 1
+}
+
+resolve_specmatic_image
 
 echo "Running validate for ${SPEC_FILE}"
 docker run \
