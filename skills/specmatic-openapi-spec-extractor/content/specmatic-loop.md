@@ -18,7 +18,7 @@ Before running the Specmatic loop, assume Docker Engine is running and attempt t
 Rules:
 
 - Prefer OS-appropriate commands from this skill: Bash examples for macOS/Linux and PowerShell examples for Windows.
-- Do not ask the user to confirm Docker availability before the first Specmatic `docker pull` or `docker run` attempt.
+- Do not ask the user to confirm Docker availability before the first Specmatic image-resolution or `docker run` attempt.
 - If command output indicates a Docker-specific failure such as Docker not being installed, Docker not being on `PATH`, Docker Desktop not being available, or the Docker daemon / engine not running, stop and ask the user exactly:
   `**Action Required:** Please start the Docker engine, then confirm once it is running.`
 - If no license is found, continue the loop with the built-in trial license.

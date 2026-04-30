@@ -35,6 +35,13 @@ Rules:
   - optional `SPECMATIC_DOCKER_IMAGE`
 - For simple applications, leave `PRE_TEST_SETUP_CMD` empty by default and do not invent a fake setup step.
 - Do not hard-code `maxTestRequestCombinations` into the config by default.
+- Both scripts must first look for a locally available Docker image with `specmatic` in its name before pulling.
+- The image selection flow must follow [content/specmatic-image-selection.md](content/specmatic-image-selection.md).
+- If a local `specmatic` image is found, the script must tell the user which image is being used and use that exact image directly.
+- The script must not do a separate `--version` probe before using that local image.
+- The script must not infer image validity from Specmatic command output.
+- If no local `specmatic` image is found, the script must tell the user it is trying to pull `specmatic/enterprise:latest`.
+- If the pull fails, the script must ask the user to pull the image manually and provide the image name so the workflow can continue.
 - Both scripts must sniff for a license under the user home `.specmatic` directory, copy the discovered file into the current working directory under `./.specmatic/` when needed, and mount that directory into Docker.
 - When a license is discovered, both scripts must also sync `specmatic.yaml` so `specmatic.license.path` points at `/usr/src/app/.specmatic/<license-file-name>` before running Specmatic.
 - If a license is found, generated `specmatic.yaml` must include `specmatic.license.path: /usr/src/app/.specmatic/<license-file-name>`.
