@@ -14,9 +14,7 @@ PORT=""
 AUTO_PORT="true"
 HEALTH_URL_OVERRIDE="${HEALTH_URL:-}"
 TEST_BASE_URL_HOST="${TEST_BASE_URL_HOST:-host.docker.internal}"
-LOCAL_LICENSE_DIR=""
 HOME_LICENSE_DIR="${HOME}/.specmatic"
-LICENSE_FILE_NAME=""
 
 usage() {
   cat <<EOF
@@ -199,39 +197,6 @@ resolve_specmatic_image() {
   return 1
 }
 
-find_license_file() {
-  local candidate
-
-  if [[ ! -d "${HOME_LICENSE_DIR}" ]]; then
-    return 1
-  fi
-
-  for candidate in \
-    "${HOME_LICENSE_DIR}/specmatic-license.txt" \
-    "${HOME_LICENSE_DIR}/license.json"; do
-    if [[ -f "${candidate}" ]]; then
-      printf '%s\n' "${candidate}"
-      return 0
-    fi
-  done
-
-  return 1
-}
-
-prepare_license() {
-  local source_license
-
-  source_license="$(find_license_file || true)"
-  if [[ -z "${source_license}" ]]; then
-    return 0
-  fi
-
-  LOCAL_LICENSE_DIR="${SPEC_DIR}/.specmatic"
-  mkdir -p "${LOCAL_LICENSE_DIR}"
-  LICENSE_FILE_NAME="$(basename "${source_license}")"
-  cp -f "${source_license}" "${LOCAL_LICENSE_DIR}/${LICENSE_FILE_NAME}"
-}
-
 generate_specmatic_config() {
   local test_base_url="http://${TEST_BASE_URL_HOST}:${PORT}"
   local mock_base_url="http://0.0.0.0:${PORT}"
@@ -267,13 +232,6 @@ dependencies:
 specmatic:
 EOF
 
-  if [[ -n "${LICENSE_FILE_NAME}" ]]; then
-    cat <<EOF
-  license:
-    path: /usr/src/app/.specmatic/${LICENSE_FILE_NAME}
-EOF
-  fi
-
   cat <<EOF
   settings:
     test:
@@ -289,7 +247,6 @@ docker_run_specmatic_with_config() {
   local command="$1"
   local docker_args=(
     run
-    --rm
     -i
     --entrypoint
     sh
@@ -307,8 +264,8 @@ docker_run_specmatic_with_config() {
     exit 2
   fi
 
-  if [[ -n "${LICENSE_FILE_NAME}" ]]; then
-    docker_args+=(-v "${LOCAL_LICENSE_DIR}:/usr/src/app/.specmatic")
+  if [[ -d "${HOME_LICENSE_DIR}" ]]; then
+    docker_args+=(-v "${HOME_LICENSE_DIR}:/root/.specmatic")
   fi
 
   docker "${docker_args[@]}" \
@@ -397,7 +354,6 @@ rm -rf "${SPEC_DIR}/build"
 
 docker_preflight
 resolve_specmatic_image
-prepare_license
 
 mock_started="false"
 for ((attempt = 1; attempt <= MAX_AUTO_PORT_ATTEMPTS; attempt++)); do

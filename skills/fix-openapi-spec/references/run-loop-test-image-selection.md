@@ -22,9 +22,8 @@ Keep both script implementations in sync with this reference and with each other
 
 ## License Setup
 
-1. After resolving the Docker image, look for a license file under the user home `.specmatic` directory.
-2. Only two license file names are considered: `specmatic-license.txt` and `license.json`.
-3. If a license is found, copy it into `<spec-dir>/.specmatic/<license-file-name>`.
-4. If a license is found, generate loop-test config with `specmatic.license.path: /usr/src/app/.specmatic/<license-file-name>`.
-5. If a license is found, mount `<spec-dir>/.specmatic` into Docker at `/usr/src/app/.specmatic` for both mock and test.
-6. If no license is found, omit `specmatic.license` and continue the loop test without failing up front.
+1. After resolving the Docker image, check whether the user home `.specmatic` directory exists.
+2. If the directory exists, mount it into Docker at `/root/.specmatic` for both mock and test.
+3. Do not copy license files into the spec directory.
+4. Do not generate `specmatic.license.path`; let Specmatic discover the license from `/root/.specmatic`.
+5. If the directory does not exist, continue the loop test without failing up front.

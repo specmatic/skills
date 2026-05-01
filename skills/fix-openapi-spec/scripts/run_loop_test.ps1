@@ -70,8 +70,6 @@ $SPECMATIC_DOCKER_IMAGE = $null
 $PullSourceImage = "specmatic/enterprise:latest"
 $HomeDir = if ($env:HOME) { $env:HOME } elseif ($env:USERPROFILE) { $env:USERPROFILE } else { [Environment]::GetFolderPath("UserProfile") }
 $HomeLicenseDir = Join-Path $HomeDir ".specmatic"
-$LocalLicenseDir = $null
-$LicenseFileName = $null
 $HEALTH_URL_OVERRIDE = if ($env:HEALTH_URL) { $env:HEALTH_URL } else { $null }
 $TEST_BASE_URL_HOST = if ($env:TEST_BASE_URL_HOST) { $env:TEST_BASE_URL_HOST } else { "host.docker.internal" }
 $STARTUP_TIMEOUT_SECONDS = 25
@@ -253,38 +251,6 @@ function Resolve-SpecmaticImage {
     Write-Error "**Action Required:** I could not find a usable local Specmatic Enterprise image and pulling `specmatic/enterprise:latest` failed. Please pull the image yourself, then tell me the image name so I can continue the loop test."
 }
 
-function Find-LicenseFile {
-    if (-not (Test-Path -LiteralPath $HomeLicenseDir -PathType Container)) {
-        return $null
-    }
-
-    $preferredNames = @(
-        "specmatic-license.txt",
-        "license.json"
-    )
-
-    foreach ($name in $preferredNames) {
-        $candidate = Join-Path $HomeLicenseDir $name
-        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
-            return $candidate
-        }
-    }
-
-    return $null
-}
-
-function Prepare-License {
-    $sourceLicense = Find-LicenseFile
-    if (-not $sourceLicense) {
-        return
-    }
-
-    $script:LocalLicenseDir = Join-Path $script:specDir ".specmatic"
-    New-Item -ItemType Directory -Path $script:LocalLicenseDir -Force | Out-Null
-    $script:LicenseFileName = Split-Path -Leaf $sourceLicense
-    Copy-Item -LiteralPath $sourceLicense -Destination (Join-Path $script:LocalLicenseDir $script:LicenseFileName) -Force
-}
-
 function Get-SpecmaticConfig {
     $testBaseUrl = "http://${script:TEST_BASE_URL_HOST}:$script:Port"
     $mockBaseUrl = "http://0.0.0.0:$script:Port"
@@ -321,13 +287,6 @@ function Get-SpecmaticConfig {
         "specmatic:"
     )
 
-    if ($script:LicenseFileName) {
-        $lines += @(
-            "  license:",
-            "    path: /usr/src/app/.specmatic/$($script:LicenseFileName)"
-        )
-    }
-
     $lines += @(
         "  settings:",
         "    test:",
@@ -357,8 +316,8 @@ function New-SpecmaticDockerArgs {
         "--entrypoint", "sh"
     )
 
-    if ($script:LicenseFileName) {
-        $dockerArgs += @("-v", "${script:LocalLicenseDir}:/usr/src/app/.specmatic")
+    if (Test-Path -LiteralPath $script:HomeLicenseDir -PathType Container) {
+        $dockerArgs += @("-v", "${script:HomeLicenseDir}:/root/.specmatic")
     }
 
     return $dockerArgs + @(
@@ -396,7 +355,6 @@ function Invoke-SpecmaticDockerWithConfig {
 try {
     Test-DockerPreflight
     Resolve-SpecmaticImage
-    Prepare-License
 
     $buildDir = Join-Path $specDir "build"
     if (Test-Path -LiteralPath $buildDir) {
