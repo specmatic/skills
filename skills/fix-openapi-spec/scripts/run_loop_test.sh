@@ -2,7 +2,9 @@
 
 set -euo pipefail
 
-SPECMATIC_DOCKER_IMAGE="${SPECMATIC_DOCKER_IMAGE:-specmatic/specmatic:latest}"
+USER_SPECIFIED_SPECMATIC_IMAGE="${SPECMATIC_DOCKER_IMAGE:-}"
+SPECMATIC_DOCKER_IMAGE=""
+PULL_SOURCE_IMAGE="specmatic/enterprise:latest"
 STARTUP_TIMEOUT_SECONDS=10
 MAX_AUTO_PORT_ATTEMPTS=10
 MAX_TEST_REQUEST_COMBINATIONS="${MAX_TEST_REQUEST_COMBINATIONS:-1}"
@@ -12,6 +14,7 @@ PORT=""
 AUTO_PORT="true"
 HEALTH_URL_OVERRIDE="${HEALTH_URL:-}"
 TEST_BASE_URL_HOST="${TEST_BASE_URL_HOST:-host.docker.internal}"
+HOME_LICENSE_DIR="${HOME}/.specmatic"
 
 usage() {
   cat <<EOF
@@ -153,6 +156,47 @@ docker_preflight() {
   exit 2
 }
 
+# Source of truth: ../references/run-loop-test-image-selection.md
+# Keep this implementation in sync with that reference and run_loop_test.ps1.
+image_exists_locally() {
+  local image="$1"
+  docker image inspect "${image}" >/dev/null 2>&1
+}
+
+resolve_specmatic_image() {
+  local candidate=""
+
+  if [[ -n "${USER_SPECIFIED_SPECMATIC_IMAGE}" ]]; then
+    candidate="${USER_SPECIFIED_SPECMATIC_IMAGE}"
+  else
+    candidate="$(docker image ls --format '{{.Repository}}:{{.Tag}}' | grep -i specmatic | grep -v '^<none>:<none>$' | head -n 1 || true)"
+  fi
+
+  if [[ -n "${candidate}" ]]; then
+    if image_exists_locally "${candidate}"; then
+      SPECMATIC_DOCKER_IMAGE="${candidate}"
+      echo "Using local Specmatic image: ${SPECMATIC_DOCKER_IMAGE}"
+      return 0
+    fi
+
+    if [[ -n "${USER_SPECIFIED_SPECMATIC_IMAGE}" ]]; then
+      echo "**Action Required:** The provided Docker image does not exist locally: ${candidate}. Please provide a valid local image name." >&2
+      return 1
+    fi
+  else
+    echo "No local Docker image with 'specmatic' in its name was found. Trying to pull: ${PULL_SOURCE_IMAGE}"
+  fi
+
+  if docker pull "${PULL_SOURCE_IMAGE}"; then
+    SPECMATIC_DOCKER_IMAGE="${PULL_SOURCE_IMAGE}"
+    echo "Using Specmatic Enterprise image: ${SPECMATIC_DOCKER_IMAGE}"
+    return 0
+  fi
+
+  echo "**Action Required:** I could not find a usable local Specmatic Enterprise image and pulling \`specmatic/enterprise:latest\` failed. Please pull the image yourself, then tell me the image name so I can continue the loop test." >&2
+  return 1
+}
+
 generate_specmatic_config() {
   local test_base_url="http://${TEST_BASE_URL_HOST}:${PORT}"
   local mock_base_url="http://0.0.0.0:${PORT}"
@@ -186,6 +230,9 @@ dependencies:
             type: mock
             baseUrl: ${mock_base_url}
 specmatic:
+EOF
+
+  cat <<EOF
   settings:
     test:
       schemaResiliencyTests: positiveOnly
@@ -198,6 +245,20 @@ EOF
 
 docker_run_specmatic_with_config() {
   local command="$1"
+  local test_base_url="http://${TEST_BASE_URL_HOST}:${PORT}"
+  local docker_args=(
+    run
+    --rm
+    -i
+    --entrypoint
+    sh
+    --add-host
+    "${TEST_BASE_URL_HOST}:host-gateway"
+    -v
+    "${SPEC_DIR}:/usr/src/app"
+    -w
+    /usr/src/app
+  )
   shift
 
   if [ -t 0 ]; then
@@ -205,16 +266,24 @@ docker_run_specmatic_with_config() {
     exit 2
   fi
 
-  docker run \
-    --rm \
-    -i \
-    --entrypoint sh \
-    --add-host "${TEST_BASE_URL_HOST}:host-gateway" \
-    -v "${SPEC_DIR}:/usr/src/app" \
-    -w /usr/src/app \
+  if [[ -d "${HOME_LICENSE_DIR}" ]]; then
+    docker_args+=(-v "${HOME_LICENSE_DIR}:/root/.specmatic")
+  fi
+
+  docker "${docker_args[@]}" \
     "$@" \
     "${SPECMATIC_DOCKER_IMAGE}" \
-    -c "cat > /tmp/specmatic.yaml && specmatic ${command} --config /tmp/specmatic.yaml --lenient"
+    -c 'cat > /tmp/specmatic.yaml
+if [ "$1" = "mock" ]; then
+  specmatic mock "$2" --config /tmp/specmatic.yaml --host 0.0.0.0 --port "$3" --lenient
+else
+  specmatic test "$2" --config /tmp/specmatic.yaml --testBaseURL="$4" --lenient
+fi' \
+    sh \
+    "${command}" \
+    "${SPEC_BASENAME}" \
+    "${PORT}" \
+    "${test_base_url}"
 }
 
 random_port() {
@@ -296,6 +365,7 @@ MOCK_CONTAINER_NAME="specmatic-loop-mock-$(basename "${MOCK_LOG}")"
 rm -rf "${SPEC_DIR}/build"
 
 docker_preflight
+resolve_specmatic_image
 
 mock_started="false"
 for ((attempt = 1; attempt <= MAX_AUTO_PORT_ATTEMPTS; attempt++)); do

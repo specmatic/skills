@@ -31,7 +31,11 @@ if (-not $SpecFile -or $RemainingArgs.Count -gt 0) {
     exit 2
 }
 
-$SPECMATIC_DOCKER_IMAGE = if ($env:SPECMATIC_DOCKER_IMAGE) { $env:SPECMATIC_DOCKER_IMAGE } else { "specmatic/specmatic:latest" }
+$UserSpecifiedSpecmaticImage = if ($env:SPECMATIC_DOCKER_IMAGE) { $env:SPECMATIC_DOCKER_IMAGE } else { $null }
+$SPECMATIC_DOCKER_IMAGE = $null
+$PullSourceImage = "specmatic/enterprise:latest"
+$HomeDir = if ($env:HOME) { $env:HOME } elseif ($env:USERPROFILE) { $env:USERPROFILE } else { [Environment]::GetFolderPath("UserProfile") }
+$HomeLicenseDir = Join-Path $HomeDir ".specmatic"
 
 if (-not (Test-Path -LiteralPath $SpecFile -PathType Leaf)) {
     Write-Error "Spec file not found: $SpecFile"
@@ -46,14 +50,88 @@ if (-not $dockerCmd) {
     Write-Error "Docker is not installed or not on PATH."
 }
 
-Write-Host "Running validate for $SpecFile"
-$validateArgs = @(
-    "run", "--rm",
-    "-v", "${specDir}:/usr/src/app",
-    "-w", "/usr/src/app",
-    $SPECMATIC_DOCKER_IMAGE,
-    "validate", "--spec-file", $specBasename
-)
+# Source of truth: ../references/validate-spec-image-selection.md
+# Keep this implementation in sync with that reference and validate_spec.sh.
+function Test-ImageExistsLocally {
+    param([Parameter(Mandatory = $true)][string]$Image)
 
-docker @validateArgs
+    docker image inspect $Image *> $null
+    return $LASTEXITCODE -eq 0
+}
+
+function Resolve-SpecmaticImage {
+    $candidate = $null
+
+    if ($script:UserSpecifiedSpecmaticImage) {
+        $candidate = $script:UserSpecifiedSpecmaticImage
+    } else {
+        $candidate = docker image ls --format '{{.Repository}}:{{.Tag}}' |
+            Where-Object { $_ -and $_ -ne "<none>:<none>" -and $_ -match "specmatic" } |
+            Select-Object -First 1
+    }
+
+    if ($candidate) {
+        if (Test-ImageExistsLocally -Image $candidate) {
+            $script:SPECMATIC_DOCKER_IMAGE = $candidate
+            Write-Host "Using local Specmatic image: $($script:SPECMATIC_DOCKER_IMAGE)"
+            return
+        }
+
+        if ($script:UserSpecifiedSpecmaticImage) {
+            Write-Error "**Action Required:** The provided Docker image does not exist locally: $candidate. Please provide a valid local image name."
+        }
+    } else {
+        Write-Host "No local Docker image with 'specmatic' in its name was found. Trying to pull: $($script:PullSourceImage)"
+    }
+
+    docker pull $script:PullSourceImage
+    if ($LASTEXITCODE -eq 0) {
+        $script:SPECMATIC_DOCKER_IMAGE = $script:PullSourceImage
+        Write-Host "Using Specmatic Enterprise image: $($script:SPECMATIC_DOCKER_IMAGE)"
+        return
+    }
+
+    Write-Error "**Action Required:** I could not find a usable local Specmatic Enterprise image and pulling `specmatic/enterprise:latest` failed. Please pull the image yourself, then tell me the image name so I can continue validation."
+}
+
+function Get-ValidateConfig {
+    return (@(
+        "version: 3",
+        "systemUnderTest:",
+        "  service:",
+        "    definitions:",
+        "      - definition:",
+        "          source:",
+        "            filesystem:",
+        "              directory: .",
+        "          specs:",
+        "            - $script:specBasename"
+    ) -join "`n") + "`n"
+}
+
+function New-ValidateDockerArgs {
+    $dockerArgs = @(
+        "run", "--rm",
+        "-i",
+        "--entrypoint", "sh",
+        "-v", "${script:specDir}:/usr/src/app",
+        "-w", "/usr/src/app"
+    )
+
+    if (Test-Path -LiteralPath $script:HomeLicenseDir -PathType Container) {
+        $dockerArgs += @("-v", "${script:HomeLicenseDir}:/root/.specmatic")
+    }
+
+    return $dockerArgs + @(
+        $script:SPECMATIC_DOCKER_IMAGE,
+        "-c", "cat > /tmp/specmatic.yaml && specmatic validate --config /tmp/specmatic.yaml"
+    )
+}
+
+Resolve-SpecmaticImage
+
+Write-Host "Running validate for $SpecFile"
+$validateConfig = Get-ValidateConfig
+$validateArgs = New-ValidateDockerArgs
+$validateConfig | docker @validateArgs
 exit $LASTEXITCODE

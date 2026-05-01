@@ -65,7 +65,11 @@ if (-not $SpecFile) {
     exit 2
 }
 
-$SPECMATIC_DOCKER_IMAGE = if ($env:SPECMATIC_DOCKER_IMAGE) { $env:SPECMATIC_DOCKER_IMAGE } else { "specmatic/specmatic:latest" }
+$UserSpecifiedSpecmaticImage = if ($env:SPECMATIC_DOCKER_IMAGE) { $env:SPECMATIC_DOCKER_IMAGE } else { $null }
+$SPECMATIC_DOCKER_IMAGE = $null
+$PullSourceImage = "specmatic/enterprise:latest"
+$HomeDir = if ($env:HOME) { $env:HOME } elseif ($env:USERPROFILE) { $env:USERPROFILE } else { [Environment]::GetFolderPath("UserProfile") }
+$HomeLicenseDir = Join-Path $HomeDir ".specmatic"
 $HEALTH_URL_OVERRIDE = if ($env:HEALTH_URL) { $env:HEALTH_URL } else { $null }
 $TEST_BASE_URL_HOST = if ($env:TEST_BASE_URL_HOST) { $env:TEST_BASE_URL_HOST } else { "host.docker.internal" }
 $STARTUP_TIMEOUT_SECONDS = 25
@@ -203,48 +207,97 @@ function Test-DockerPreflight {
     }
 }
 
+# Source of truth: ../references/run-loop-test-image-selection.md
+# Keep this implementation in sync with that reference and run_loop_test.sh.
+function Test-ImageExistsLocally {
+    param([Parameter(Mandatory = $true)][string]$Image)
+
+    docker image inspect $Image *> $null
+    return $LASTEXITCODE -eq 0
+}
+
+function Resolve-SpecmaticImage {
+    $candidate = $null
+
+    if ($script:UserSpecifiedSpecmaticImage) {
+        $candidate = $script:UserSpecifiedSpecmaticImage
+    } else {
+        $candidate = docker image ls --format '{{.Repository}}:{{.Tag}}' |
+            Where-Object { $_ -and $_ -ne "<none>:<none>" -and $_ -match "specmatic" } |
+            Select-Object -First 1
+    }
+
+    if ($candidate) {
+        if (Test-ImageExistsLocally -Image $candidate) {
+            $script:SPECMATIC_DOCKER_IMAGE = $candidate
+            Write-Host "Using local Specmatic image: $($script:SPECMATIC_DOCKER_IMAGE)"
+            return
+        }
+
+        if ($script:UserSpecifiedSpecmaticImage) {
+            Write-Error "**Action Required:** The provided Docker image does not exist locally: $candidate. Please provide a valid local image name."
+        }
+    } else {
+        Write-Host "No local Docker image with 'specmatic' in its name was found. Trying to pull: $($script:PullSourceImage)"
+    }
+
+    docker pull $script:PullSourceImage
+    if ($LASTEXITCODE -eq 0) {
+        $script:SPECMATIC_DOCKER_IMAGE = $script:PullSourceImage
+        Write-Host "Using Specmatic Enterprise image: $($script:SPECMATIC_DOCKER_IMAGE)"
+        return
+    }
+
+    Write-Error "**Action Required:** I could not find a usable local Specmatic Enterprise image and pulling `specmatic/enterprise:latest` failed. Please pull the image yourself, then tell me the image name so I can continue the loop test."
+}
+
 function Get-SpecmaticConfig {
     $testBaseUrl = "http://${script:TEST_BASE_URL_HOST}:$script:Port"
     $mockBaseUrl = "http://0.0.0.0:$script:Port"
 
-    @"
-version: 3
-systemUnderTest:
-  service:
-    definitions:
-      - definition:
-          source:
-            filesystem:
-              directory: .
-          specs:
-            - $script:specBasename
-    runOptions:
-      openapi:
-        type: test
-        baseUrl: $testBaseUrl
-dependencies:
-  services:
-    - service:
-        definitions:
-          - definition:
-              source:
-                filesystem:
-                  directory: .
-              specs:
-                - $script:specBasename
-        runOptions:
-          openapi:
-            type: mock
-            baseUrl: $mockBaseUrl
-specmatic:
-  settings:
-    test:
-      schemaResiliencyTests: positiveOnly
-      maxTestRequestCombinations: $script:MAX_TEST_REQUEST_COMBINATIONS
-      lenientMode: true
-    mock:
-      lenientMode: true
-"@
+    $lines = @(
+        "version: 3",
+        "systemUnderTest:",
+        "  service:",
+        "    definitions:",
+        "      - definition:",
+        "          source:",
+        "            filesystem:",
+        "              directory: .",
+        "          specs:",
+        "            - $script:specBasename",
+        "    runOptions:",
+        "      openapi:",
+        "        type: test",
+        "        baseUrl: $testBaseUrl",
+        "dependencies:",
+        "  services:",
+        "    - service:",
+        "        definitions:",
+        "          - definition:",
+        "              source:",
+        "                filesystem:",
+        "                  directory: .",
+        "              specs:",
+        "                - $script:specBasename",
+        "        runOptions:",
+        "          openapi:",
+        "            type: mock",
+        "            baseUrl: $mockBaseUrl",
+        "specmatic:"
+    )
+
+    $lines += @(
+        "  settings:",
+        "    test:",
+        "      schemaResiliencyTests: positiveOnly",
+        "      maxTestRequestCombinations: $script:MAX_TEST_REQUEST_COMBINATIONS",
+        "      lenientMode: true",
+        "    mock:",
+        "      lenientMode: true"
+    )
+
+    return ($lines -join "`n") + "`n"
 }
 
 function New-SpecmaticDockerArgs {
@@ -253,16 +306,37 @@ function New-SpecmaticDockerArgs {
         [string[]]$ExtraDockerArgs = @()
     )
 
-    @(
+    $testBaseUrl = "http://${script:TEST_BASE_URL_HOST}:$script:Port"
+
+    $dockerArgs = @(
         "run", "--rm",
         "-i",
         "--add-host", "${script:TEST_BASE_URL_HOST}:host-gateway"
     ) + $ExtraDockerArgs + @(
         "-v", "${script:specDir}:/usr/src/app",
         "-w", "/usr/src/app",
-        "--entrypoint", "sh",
+        "--entrypoint", "sh"
+    )
+
+    if (Test-Path -LiteralPath $script:HomeLicenseDir -PathType Container) {
+        $dockerArgs += @("-v", "${script:HomeLicenseDir}:/root/.specmatic")
+    }
+
+    return $dockerArgs + @(
         $script:SPECMATIC_DOCKER_IMAGE,
-        "-c", "cat > /tmp/specmatic.yaml && specmatic $Command --config /tmp/specmatic.yaml --lenient"
+        "-c", @'
+cat > /tmp/specmatic.yaml
+if [ "$1" = "mock" ]; then
+  specmatic mock "$2" --config /tmp/specmatic.yaml --host 0.0.0.0 --port "$3" --lenient
+else
+  specmatic test "$2" --config /tmp/specmatic.yaml --testBaseURL="$4" --lenient
+fi
+'@,
+        "sh",
+        $Command,
+        $script:specBasename,
+        $script:Port,
+        $testBaseUrl
     )
 }
 
@@ -294,6 +368,7 @@ function Invoke-SpecmaticDockerWithConfig {
 
 try {
     Test-DockerPreflight
+    Resolve-SpecmaticImage
 
     $buildDir = Join-Path $specDir "build"
     if (Test-Path -LiteralPath $buildDir) {
