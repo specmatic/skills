@@ -10,14 +10,14 @@ Follow this sequence:
 
 ## Image Selection
 
-Before starting Specmatic contract tests or stubs, first look for a locally available Docker image with `specmatic` in its name.
+Before starting Specmatic contract tests or stubs, first list the local Docker images whose repository or tag contains `specmatic`, then resolve the latest one using the image-selection rules below.
 
 ```bash
-docker image ls --format '{{.Repository}}:{{.Tag}}' | grep -i specmatic
+docker image ls --no-trunc --format '{{.Repository}}\t{{.Tag}}\t{{.ID}}'
 ```
 
 ```powershell
-docker image ls --format '{{.Repository}}:{{.Tag}}' | Select-String -Pattern specmatic
+docker image ls --no-trunc --format '{{.Repository}}	{{.Tag}}	{{.ID}}'
 ```
 
 Execution rule:
@@ -25,7 +25,8 @@ Execution rule:
 - Do not use Specmatic MCP tools as a substitute for these commands.
 - Prefer OS-appropriate commands: Bash on macOS/Linux and PowerShell on Windows.
 - Follow [content/specmatic-image-selection.md](content/specmatic-image-selection.md) as the source of truth for this flow.
-- Try the first local image whose repository or tag contains `specmatic`.
+- Try the latest local image whose repository or tag contains `specmatic`, excluding `<none>:<none>`.
+- Determine "latest" by Docker image creation time descending. If multiple matching references share the same creation timestamp, use the lexicographically smallest `<repository>:<tag>` as the stable tie-breaker.
 - Tell the user which local image is being used.
 - Use that exact image name directly for the workflow.
 - Do not do a separate `--version` probe and do not infer image validity from Specmatic command output.
