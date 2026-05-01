@@ -23,15 +23,52 @@ function Test-ImageExistsLocally {
     return $LASTEXITCODE -eq 0
 }
 
+function Find-LatestLocalSpecmaticImage {
+    $candidates = foreach ($line in (docker image ls --no-trunc --format '{{.Repository}}	{{.Tag}}	{{.ID}}')) {
+        if (-not $line) {
+            continue
+        }
+
+        $parts = $line -split "`t"
+        if ($parts.Count -lt 3) {
+            continue
+        }
+
+        $repo = $parts[0]
+        $tag = $parts[1]
+        $id = $parts[2]
+
+        if ("$repo`:$tag" -eq "<none>:<none>") {
+            continue
+        }
+
+        if ($repo -notmatch "specmatic" -and $tag -notmatch "specmatic") {
+            continue
+        }
+
+        $created = docker image inspect --format '{{.Created}}' $id 2>$null
+        if (-not $created) {
+            continue
+        }
+
+        [pscustomobject]@{
+            Created = [string]$created
+            Ref = "{0}:{1}" -f $repo, $tag
+        }
+    }
+
+    return $candidates |
+        Sort-Object @{ Expression = "Created"; Descending = $true }, @{ Expression = "Ref"; Descending = $false } |
+        Select-Object -First 1 -ExpandProperty Ref
+}
+
 function Resolve-EnterpriseImage {
     $candidate = $null
 
     if ($script:UserSpecifiedSpecmaticImage) {
         $candidate = $script:UserSpecifiedSpecmaticImage
     } else {
-        $candidate = docker image ls --format '{{.Repository}}:{{.Tag}}' |
-            Where-Object { $_ -and $_ -ne "<none>:<none>" -and $_ -match "specmatic" } |
-            Select-Object -First 1
+        $candidate = Find-LatestLocalSpecmaticImage
     }
 
     if ($candidate) {

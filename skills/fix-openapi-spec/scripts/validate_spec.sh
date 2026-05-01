@@ -50,13 +50,37 @@ image_exists_locally() {
   docker image inspect "${image}" >/dev/null 2>&1
 }
 
+find_latest_local_specmatic_image() {
+  local repo=""
+  local tag=""
+  local id=""
+  local created=""
+
+  while IFS=$'\t' read -r repo tag id; do
+    [[ -n "${repo}" && -n "${tag}" && -n "${id}" ]] || continue
+    [[ "${repo}:${tag}" == "<none>:<none>" ]] && continue
+
+    if [[ ! "${repo}" =~ [Ss][Pp][Ee][Cc][Mm][Aa][Tt][Ii][Cc] && ! "${tag}" =~ [Ss][Pp][Ee][Cc][Mm][Aa][Tt][Ii][Cc] ]]; then
+      continue
+    fi
+
+    created="$(docker image inspect --format '{{.Created}}' "${id}" 2>/dev/null || true)"
+    [[ -n "${created}" ]] || continue
+
+    printf '%s\t%s:%s\n' "${created}" "${repo}" "${tag}"
+  done < <(docker image ls --no-trunc --format '{{.Repository}}\t{{.Tag}}\t{{.ID}}') |
+    sort -t $'\t' -k1,1r -k2,2 |
+    head -n 1 |
+    cut -f2
+}
+
 resolve_specmatic_image() {
   local candidate=""
 
   if [[ -n "${USER_SPECIFIED_SPECMATIC_IMAGE}" ]]; then
     candidate="${USER_SPECIFIED_SPECMATIC_IMAGE}"
   else
-    candidate="$(docker image ls --format '{{.Repository}}:{{.Tag}}' | grep -i specmatic | grep -v '^<none>:<none>$' | head -n 1 || true)"
+    candidate="$(find_latest_local_specmatic_image)"
   fi
 
   if [[ -n "${candidate}" ]]; then
