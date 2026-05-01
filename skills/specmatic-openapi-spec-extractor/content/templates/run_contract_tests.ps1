@@ -26,9 +26,7 @@ function Find-LicenseFile {
 
     $preferredNames = @(
         "license.txt",
-        "license.lic",
         "specmatic-license.txt",
-        "specmatic-license.lic",
         "specmatic.txt"
     )
 
@@ -40,7 +38,7 @@ function Find-LicenseFile {
     }
 
     $fallback = Get-ChildItem -LiteralPath $HomeLicenseDir -File |
-        Where-Object { $_.Name -match "license" -or $_.Extension -ieq ".lic" -or $_.Name -like "specmatic*.txt" } |
+        Where-Object { $_.Name -match "license" -or $_.Name -like "specmatic*.txt" } |
         Select-Object -First 1
 
     if ($fallback) {
