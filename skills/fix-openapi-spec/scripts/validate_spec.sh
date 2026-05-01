@@ -102,7 +102,7 @@ docker_run_validate() {
 
   docker "${docker_args[@]}" \
     "${SPECMATIC_DOCKER_IMAGE}" \
-    -c "specmatic validate \"${SPEC_BASENAME}\""
+    -c "specmatic validate --spec-file \"${SPEC_BASENAME}\""
 }
 
 resolve_specmatic_image

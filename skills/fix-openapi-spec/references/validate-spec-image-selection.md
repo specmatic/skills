@@ -30,6 +30,6 @@ Keep both script implementations in sync with this reference and with each other
 
 ## Validation Command
 
-Run validation directly against the mounted spec file without generating or passing a Specmatic config:
+Run validation directly against the mounted spec file using `--spec-file`, without generating or passing a Specmatic config:
 
-`specmatic validate <spec-basename>`
+`specmatic validate --spec-file <spec-basename>`

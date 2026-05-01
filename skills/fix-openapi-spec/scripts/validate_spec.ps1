@@ -108,7 +108,7 @@ function New-ValidateDockerArgs {
 
     return $dockerArgs + @(
         $script:SPECMATIC_DOCKER_IMAGE,
-        "-c", "specmatic validate `"$($script:specBasename)`""
+        "-c", "specmatic validate --spec-file `"$($script:specBasename)`""
     )
 }
 
