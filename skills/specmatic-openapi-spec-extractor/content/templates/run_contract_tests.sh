@@ -76,6 +76,7 @@ find_license_file() {
     "${HOME_LICENSE_DIR}/license.txt" \
     "${HOME_LICENSE_DIR}/license.lic" \
     "${HOME_LICENSE_DIR}/specmatic-license.txt" \
+    "${HOME_LICENSE_DIR}/specmatic.txt" \
     "${HOME_LICENSE_DIR}/specmatic-license.lic"; do
     if [[ -f "${candidate}" ]]; then
       printf '%s\n' "${candidate}"
