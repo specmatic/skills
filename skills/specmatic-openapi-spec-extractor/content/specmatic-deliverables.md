@@ -58,6 +58,10 @@ Rules:
 
 Document:
 
+- start with a short `How to run` section near the top
+- tell the user explicitly that they can run the contract tests themselves using the generated script
+- include the exact primary rerun command for macOS/Linux and the Windows PowerShell equivalent when both scripts are generated
+- tell the user what, if anything, they need to start or set before running that command
 - what `run_contract_tests.sh` and `run_contract_tests.ps1` do step-by-step
 - required inputs and files: `specmatic.yaml`, extracted specs, examples, running SUT, optional license file
 - how to set `SUT_PORT`
@@ -79,6 +83,8 @@ Document:
   - failed
   - failed due to license limits
 - known non-fixable failures
+
+Do not make the user infer the rerun path from a descriptive README. The README must plainly say which command to run.
 
 ## Acceptance Checks
 
