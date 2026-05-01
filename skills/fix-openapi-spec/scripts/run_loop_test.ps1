@@ -359,16 +359,19 @@ function New-SpecmaticDockerArgs {
         $dockerArgs += @("-v", "${script:HomeLicenseDir}:/root/.specmatic")
     }
 
-    return $dockerArgs + @(
-        $script:SPECMATIC_DOCKER_IMAGE,
-        "-c", @'
+    $entrypointScript = @'
 cat > /tmp/specmatic.yaml
 if [ "$1" = "mock" ]; then
   specmatic mock "$2" --config /tmp/specmatic.yaml --host 0.0.0.0 --port "$3" --lenient
 else
   specmatic test "$2" --config /tmp/specmatic.yaml --testBaseURL="$4" --lenient
 fi
-'@,
+'@.Replace("`r`n", "`n")
+
+    return $dockerArgs + @(
+        $script:SPECMATIC_DOCKER_IMAGE,
+        "-c",
+        $entrypointScript,
         "sh",
         $Command,
         $script:specBasename,
