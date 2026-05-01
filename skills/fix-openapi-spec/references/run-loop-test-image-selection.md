@@ -27,3 +27,10 @@ Keep both script implementations in sync with this reference and with each other
 3. Do not copy license files into the spec directory.
 4. Do not generate `specmatic.license.path`; let Specmatic discover the license from `/root/.specmatic`.
 5. If the directory does not exist, continue the loop test without failing up front.
+
+## Loop Test Command
+
+Run mock and test through the generated config piped into Docker:
+
+- `cat > /tmp/specmatic.yaml && specmatic mock <spec-basename> --config /tmp/specmatic.yaml --host 0.0.0.0 --port <selected-port> --lenient`
+- `cat > /tmp/specmatic.yaml && specmatic test <spec-basename> --config /tmp/specmatic.yaml --testBaseURL=<mock-base-url> --lenient`

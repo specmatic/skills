@@ -306,6 +306,8 @@ function New-SpecmaticDockerArgs {
         [string[]]$ExtraDockerArgs = @()
     )
 
+    $testBaseUrl = "http://${script:TEST_BASE_URL_HOST}:$script:Port"
+
     $dockerArgs = @(
         "run", "--rm",
         "-i",
@@ -322,7 +324,19 @@ function New-SpecmaticDockerArgs {
 
     return $dockerArgs + @(
         $script:SPECMATIC_DOCKER_IMAGE,
-        "-c", "cat > /tmp/specmatic.yaml && specmatic $Command --config /tmp/specmatic.yaml --lenient"
+        "-c", @'
+cat > /tmp/specmatic.yaml
+if [ "$1" = "mock" ]; then
+  specmatic mock "$2" --config /tmp/specmatic.yaml --host 0.0.0.0 --port "$3" --lenient
+else
+  specmatic test "$2" --config /tmp/specmatic.yaml --testBaseURL="$4" --lenient
+fi
+'@,
+        "sh",
+        $Command,
+        $script:specBasename,
+        $script:Port,
+        $testBaseUrl
     )
 }
 

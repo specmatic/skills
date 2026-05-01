@@ -245,6 +245,7 @@ EOF
 
 docker_run_specmatic_with_config() {
   local command="$1"
+  local test_base_url="http://${TEST_BASE_URL_HOST}:${PORT}"
   local docker_args=(
     run
     --rm
@@ -272,7 +273,17 @@ docker_run_specmatic_with_config() {
   docker "${docker_args[@]}" \
     "$@" \
     "${SPECMATIC_DOCKER_IMAGE}" \
-    -c "cat > /tmp/specmatic.yaml && specmatic ${command} --config /tmp/specmatic.yaml --lenient"
+    -c 'cat > /tmp/specmatic.yaml
+if [ "$1" = "mock" ]; then
+  specmatic mock "$2" --config /tmp/specmatic.yaml --host 0.0.0.0 --port "$3" --lenient
+else
+  specmatic test "$2" --config /tmp/specmatic.yaml --testBaseURL="$4" --lenient
+fi' \
+    sh \
+    "${command}" \
+    "${SPEC_BASENAME}" \
+    "${PORT}" \
+    "${test_base_url}"
 }
 
 random_port() {
