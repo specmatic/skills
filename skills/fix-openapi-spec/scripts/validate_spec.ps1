@@ -34,6 +34,10 @@ if (-not $SpecFile -or $RemainingArgs.Count -gt 0) {
 $UserSpecifiedSpecmaticImage = if ($env:SPECMATIC_DOCKER_IMAGE) { $env:SPECMATIC_DOCKER_IMAGE } else { $null }
 $SPECMATIC_DOCKER_IMAGE = $null
 $PullSourceImage = "specmatic/enterprise:latest"
+$HomeDir = if ($env:HOME) { $env:HOME } elseif ($env:USERPROFILE) { $env:USERPROFILE } else { [Environment]::GetFolderPath("UserProfile") }
+$HomeLicenseDir = Join-Path $HomeDir ".specmatic"
+$LocalLicenseDir = $null
+$LicenseFileName = $null
 
 if (-not (Test-Path -LiteralPath $SpecFile -PathType Leaf)) {
     Write-Error "Spec file not found: $SpecFile"
@@ -92,16 +96,87 @@ function Resolve-SpecmaticImage {
     Write-Error "**Action Required:** I could not find a usable local Specmatic Enterprise image and pulling `specmatic/enterprise:latest` failed. Please pull the image yourself, then tell me the image name so I can continue validation."
 }
 
+function Find-LicenseFile {
+    if (-not (Test-Path -LiteralPath $HomeLicenseDir -PathType Container)) {
+        return $null
+    }
+
+    $preferredNames = @(
+        "specmatic-license.txt",
+        "license.json"
+    )
+
+    foreach ($name in $preferredNames) {
+        $candidate = Join-Path $HomeLicenseDir $name
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
+function Prepare-License {
+    $sourceLicense = Find-LicenseFile
+    if (-not $sourceLicense) {
+        return
+    }
+
+    $script:LocalLicenseDir = Join-Path $script:specDir ".specmatic"
+    New-Item -ItemType Directory -Path $script:LocalLicenseDir -Force | Out-Null
+    $script:LicenseFileName = Split-Path -Leaf $sourceLicense
+    Copy-Item -LiteralPath $sourceLicense -Destination (Join-Path $script:LocalLicenseDir $script:LicenseFileName) -Force
+}
+
+function Get-ValidateConfig {
+    $lines = @(
+        "version: 3",
+        "systemUnderTest:",
+        "  service:",
+        "    definitions:",
+        "      - definition:",
+        "          source:",
+        "            filesystem:",
+        "              directory: .",
+        "          specs:",
+        "            - $script:specBasename"
+    )
+
+    if ($script:LicenseFileName) {
+        $lines += @(
+            "specmatic:",
+            "  license:",
+            "    path: /usr/src/app/.specmatic/$($script:LicenseFileName)"
+        )
+    }
+
+    return ($lines -join "`n") + "`n"
+}
+
+function New-ValidateDockerArgs {
+    $dockerArgs = @(
+        "run", "--rm",
+        "-i",
+        "--entrypoint", "sh",
+        "-v", "${script:specDir}:/usr/src/app",
+        "-w", "/usr/src/app"
+    )
+
+    if ($script:LicenseFileName) {
+        $dockerArgs += @("-v", "${script:LocalLicenseDir}:/usr/src/app/.specmatic")
+    }
+
+    return $dockerArgs + @(
+        $script:SPECMATIC_DOCKER_IMAGE,
+        "-c", "cat > /tmp/specmatic.yaml && specmatic validate --config /tmp/specmatic.yaml"
+    )
+}
+
 Resolve-SpecmaticImage
+Prepare-License
 
 Write-Host "Running validate for $SpecFile"
-$validateArgs = @(
-    "run", "--rm",
-    "-v", "${specDir}:/usr/src/app",
-    "-w", "/usr/src/app",
-    $SPECMATIC_DOCKER_IMAGE,
-    "validate", "--spec-file", $specBasename
-)
-
-docker @validateArgs
+$validateConfig = Get-ValidateConfig
+$validateArgs = New-ValidateDockerArgs
+$validateConfig | docker @validateArgs
 exit $LASTEXITCODE

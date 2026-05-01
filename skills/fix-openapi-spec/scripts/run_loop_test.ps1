@@ -68,6 +68,10 @@ if (-not $SpecFile) {
 $UserSpecifiedSpecmaticImage = if ($env:SPECMATIC_DOCKER_IMAGE) { $env:SPECMATIC_DOCKER_IMAGE } else { $null }
 $SPECMATIC_DOCKER_IMAGE = $null
 $PullSourceImage = "specmatic/enterprise:latest"
+$HomeDir = if ($env:HOME) { $env:HOME } elseif ($env:USERPROFILE) { $env:USERPROFILE } else { [Environment]::GetFolderPath("UserProfile") }
+$HomeLicenseDir = Join-Path $HomeDir ".specmatic"
+$LocalLicenseDir = $null
+$LicenseFileName = $null
 $HEALTH_URL_OVERRIDE = if ($env:HEALTH_URL) { $env:HEALTH_URL } else { $null }
 $TEST_BASE_URL_HOST = if ($env:TEST_BASE_URL_HOST) { $env:TEST_BASE_URL_HOST } else { "host.docker.internal" }
 $STARTUP_TIMEOUT_SECONDS = 25
@@ -249,48 +253,92 @@ function Resolve-SpecmaticImage {
     Write-Error "**Action Required:** I could not find a usable local Specmatic Enterprise image and pulling `specmatic/enterprise:latest` failed. Please pull the image yourself, then tell me the image name so I can continue the loop test."
 }
 
+function Find-LicenseFile {
+    if (-not (Test-Path -LiteralPath $HomeLicenseDir -PathType Container)) {
+        return $null
+    }
+
+    $preferredNames = @(
+        "specmatic-license.txt",
+        "license.json"
+    )
+
+    foreach ($name in $preferredNames) {
+        $candidate = Join-Path $HomeLicenseDir $name
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
+function Prepare-License {
+    $sourceLicense = Find-LicenseFile
+    if (-not $sourceLicense) {
+        return
+    }
+
+    $script:LocalLicenseDir = Join-Path $script:specDir ".specmatic"
+    New-Item -ItemType Directory -Path $script:LocalLicenseDir -Force | Out-Null
+    $script:LicenseFileName = Split-Path -Leaf $sourceLicense
+    Copy-Item -LiteralPath $sourceLicense -Destination (Join-Path $script:LocalLicenseDir $script:LicenseFileName) -Force
+}
+
 function Get-SpecmaticConfig {
     $testBaseUrl = "http://${script:TEST_BASE_URL_HOST}:$script:Port"
     $mockBaseUrl = "http://0.0.0.0:$script:Port"
 
-    @"
-version: 3
-systemUnderTest:
-  service:
-    definitions:
-      - definition:
-          source:
-            filesystem:
-              directory: .
-          specs:
-            - $script:specBasename
-    runOptions:
-      openapi:
-        type: test
-        baseUrl: $testBaseUrl
-dependencies:
-  services:
-    - service:
-        definitions:
-          - definition:
-              source:
-                filesystem:
-                  directory: .
-              specs:
-                - $script:specBasename
-        runOptions:
-          openapi:
-            type: mock
-            baseUrl: $mockBaseUrl
-specmatic:
-  settings:
-    test:
-      schemaResiliencyTests: positiveOnly
-      maxTestRequestCombinations: $script:MAX_TEST_REQUEST_COMBINATIONS
-      lenientMode: true
-    mock:
-      lenientMode: true
-"@
+    $lines = @(
+        "version: 3",
+        "systemUnderTest:",
+        "  service:",
+        "    definitions:",
+        "      - definition:",
+        "          source:",
+        "            filesystem:",
+        "              directory: .",
+        "          specs:",
+        "            - $script:specBasename",
+        "    runOptions:",
+        "      openapi:",
+        "        type: test",
+        "        baseUrl: $testBaseUrl",
+        "dependencies:",
+        "  services:",
+        "    - service:",
+        "        definitions:",
+        "          - definition:",
+        "              source:",
+        "                filesystem:",
+        "                  directory: .",
+        "              specs:",
+        "                - $script:specBasename",
+        "        runOptions:",
+        "          openapi:",
+        "            type: mock",
+        "            baseUrl: $mockBaseUrl",
+        "specmatic:"
+    )
+
+    if ($script:LicenseFileName) {
+        $lines += @(
+            "  license:",
+            "    path: /usr/src/app/.specmatic/$($script:LicenseFileName)"
+        )
+    }
+
+    $lines += @(
+        "  settings:",
+        "    test:",
+        "      schemaResiliencyTests: positiveOnly",
+        "      maxTestRequestCombinations: $script:MAX_TEST_REQUEST_COMBINATIONS",
+        "      lenientMode: true",
+        "    mock:",
+        "      lenientMode: true"
+    )
+
+    return ($lines -join "`n") + "`n"
 }
 
 function New-SpecmaticDockerArgs {
@@ -299,14 +347,21 @@ function New-SpecmaticDockerArgs {
         [string[]]$ExtraDockerArgs = @()
     )
 
-    @(
+    $dockerArgs = @(
         "run", "--rm",
         "-i",
         "--add-host", "${script:TEST_BASE_URL_HOST}:host-gateway"
     ) + $ExtraDockerArgs + @(
         "-v", "${script:specDir}:/usr/src/app",
         "-w", "/usr/src/app",
-        "--entrypoint", "sh",
+        "--entrypoint", "sh"
+    )
+
+    if ($script:LicenseFileName) {
+        $dockerArgs += @("-v", "${script:LocalLicenseDir}:/usr/src/app/.specmatic")
+    }
+
+    return $dockerArgs + @(
         $script:SPECMATIC_DOCKER_IMAGE,
         "-c", "cat > /tmp/specmatic.yaml && specmatic $Command --config /tmp/specmatic.yaml --lenient"
     )
@@ -341,6 +396,7 @@ function Invoke-SpecmaticDockerWithConfig {
 try {
     Test-DockerPreflight
     Resolve-SpecmaticImage
+    Prepare-License
 
     $buildDir = Join-Path $specDir "build"
     if (Test-Path -LiteralPath $buildDir) {

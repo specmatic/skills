@@ -5,6 +5,9 @@ set -euo pipefail
 USER_SPECIFIED_SPECMATIC_IMAGE="${SPECMATIC_DOCKER_IMAGE:-}"
 SPECMATIC_DOCKER_IMAGE=""
 PULL_SOURCE_IMAGE="specmatic/enterprise:latest"
+LOCAL_LICENSE_DIR=""
+HOME_LICENSE_DIR="${HOME}/.specmatic"
+LICENSE_FILE_NAME=""
 
 usage() {
   cat <<EOF
@@ -83,14 +86,86 @@ resolve_specmatic_image() {
   return 1
 }
 
+find_license_file() {
+  local candidate
+
+  if [[ ! -d "${HOME_LICENSE_DIR}" ]]; then
+    return 1
+  fi
+
+  for candidate in \
+    "${HOME_LICENSE_DIR}/specmatic-license.txt" \
+    "${HOME_LICENSE_DIR}/license.json"; do
+    if [[ -f "${candidate}" ]]; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+prepare_license() {
+  local source_license
+
+  source_license="$(find_license_file || true)"
+  if [[ -z "${source_license}" ]]; then
+    return 0
+  fi
+
+  LOCAL_LICENSE_DIR="${SPEC_DIR}/.specmatic"
+  mkdir -p "${LOCAL_LICENSE_DIR}"
+  LICENSE_FILE_NAME="$(basename "${source_license}")"
+  cp -f "${source_license}" "${LOCAL_LICENSE_DIR}/${LICENSE_FILE_NAME}"
+}
+
+generate_validate_config() {
+  cat <<EOF
+version: 3
+systemUnderTest:
+  service:
+    definitions:
+      - definition:
+          source:
+            filesystem:
+              directory: .
+          specs:
+            - ${SPEC_BASENAME}
+EOF
+
+  if [[ -n "${LICENSE_FILE_NAME}" ]]; then
+    cat <<EOF
+specmatic:
+  license:
+    path: /usr/src/app/.specmatic/${LICENSE_FILE_NAME}
+EOF
+  fi
+}
+
+docker_run_validate_with_config() {
+  local docker_args=(
+    run
+    --rm
+    -i
+    --entrypoint
+    sh
+    -v
+    "${SPEC_DIR}:/usr/src/app"
+    -w
+    /usr/src/app
+  )
+
+  if [[ -n "${LICENSE_FILE_NAME}" ]]; then
+    docker_args+=(-v "${LOCAL_LICENSE_DIR}:/usr/src/app/.specmatic")
+  fi
+
+  docker "${docker_args[@]}" \
+    "${SPECMATIC_DOCKER_IMAGE}" \
+    -c "cat > /tmp/specmatic.yaml && specmatic validate --config /tmp/specmatic.yaml"
+}
+
 resolve_specmatic_image
+prepare_license
 
 echo "Running validate for ${SPEC_FILE}"
-docker run \
-  --rm \
-  -v "${SPEC_DIR}:/usr/src/app" \
-  -w /usr/src/app \
-  "${SPECMATIC_DOCKER_IMAGE}" \
-  validate \
-  --spec-file \
-  "${SPEC_BASENAME}"
+generate_validate_config | docker_run_validate_with_config
