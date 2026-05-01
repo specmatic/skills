@@ -48,6 +48,10 @@ Phase 1 -> Phase 2 -> Phase 3 -> Phase 4 validation -> STOP for user approval ->
 - Do not claim validation or loop testing is unavailable until after a script run fails for a Docker-specific reason.
 - If it appears to be a permissions issue, try resolving it using your environment’s built-in privilege escalation mechanisms available to you.
 
+## Script Execution Rule
+
+- If a script reports that an action is required from the user, report this verbatim to the user. Do not move ahead until the user has responded with the required information or action.
+
 ## Working area
 
 Ignore any old test files or log files that existed before this conversation. You'll work with the output of the relevant commands as per the workflow state machine.
