@@ -88,7 +88,7 @@ systemUnderTest:
           - spec:
               id: <your-api-id>
               # overlayFilePath: ./specmatic/openapi.overlay.yaml
-              # filter: PATH='/users'
+        # filter: PATH='/users'
     data:
       examples:
         - directories:
