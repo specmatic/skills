@@ -247,6 +247,7 @@ docker_run_specmatic_with_config() {
   local command="$1"
   local docker_args=(
     run
+    --rm
     -i
     --entrypoint
     sh
