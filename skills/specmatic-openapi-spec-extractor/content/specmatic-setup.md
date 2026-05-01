@@ -10,7 +10,7 @@ Follow this sequence:
 
 ## Image Selection
 
-Before starting Specmatic contract tests or stubs, first look for a locally available Docker image with `specmatic` in its name.
+Before starting Specmatic contract tests or stubs, resolve the Specmatic Docker image by following [content/specmatic-image-selection.md](content/specmatic-image-selection.md).
 
 ```bash
 docker image ls --format '{{.Repository}}:{{.Tag}}' | grep -i specmatic
@@ -24,13 +24,7 @@ Execution rule:
 - Use shell/Docker commands exactly as documented in this skill for validation, stubs, and test execution.
 - Do not use Specmatic MCP tools as a substitute for these commands.
 - Prefer OS-appropriate commands: Bash on macOS/Linux and PowerShell on Windows.
-- Follow [content/specmatic-image-selection.md](content/specmatic-image-selection.md) as the source of truth for this flow.
-- Try the first local image whose repository or tag contains `specmatic`.
-- Tell the user which local image is being used.
-- Use that exact image name directly for the workflow.
-- Do not do a separate `--version` probe and do not infer image validity from Specmatic command output.
-- If no local `specmatic` image exists, tell the user the workflow is trying to pull `specmatic/enterprise:latest`.
-- If the pull fails, ask the user to pull the image themselves and share the pulled image name so the workflow can continue.
+- Follow [content/specmatic-image-selection.md](content/specmatic-image-selection.md) as the only prose source of truth for this flow.
 - In all documented `docker run` examples below, replace `<resolved-specmatic-image>` with the concrete image chosen by this flow.
 
 ## `specmatic.yaml` Shape

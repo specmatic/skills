@@ -2,6 +2,8 @@
 
 Use this flow whenever the skill needs a Docker image for Specmatic Enterprise.
 
+This file is the image-selection contract for the skill. The Bash and PowerShell runner templates implement this behavior at runtime.
+
 ## Required Flow
 
 1. Look for the first local Docker image whose repository or tag contains `specmatic`.
