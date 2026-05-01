@@ -108,26 +108,10 @@ resolve_specmatic_image() {
   return 1
 }
 
-generate_validate_config() {
-  cat <<EOF
-version: 3
-systemUnderTest:
-  service:
-    definitions:
-      - definition:
-          source:
-            filesystem:
-              directory: .
-          specs:
-            - ${SPEC_BASENAME}
-EOF
-}
-
-docker_run_validate_with_config() {
+docker_run_validate() {
   local docker_args=(
     run
     --rm
-    -i
     --entrypoint
     sh
     -v
@@ -142,10 +126,10 @@ docker_run_validate_with_config() {
 
   docker "${docker_args[@]}" \
     "${SPECMATIC_DOCKER_IMAGE}" \
-    -c "cat > /tmp/specmatic.yaml && specmatic validate --config /tmp/specmatic.yaml"
+    -c "specmatic validate --spec-file \"${SPEC_BASENAME}\""
 }
 
 resolve_specmatic_image
 
 echo "Running validate for ${SPEC_FILE}"
-generate_validate_config | docker_run_validate_with_config
+docker_run_validate

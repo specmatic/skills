@@ -131,25 +131,9 @@ function Resolve-SpecmaticImage {
     Write-Error "**Action Required:** I could not find a usable local Specmatic Enterprise image and pulling `specmatic/enterprise:latest` failed. Please pull the image yourself, then tell me the image name so I can continue validation."
 }
 
-function Get-ValidateConfig {
-    return (@(
-        "version: 3",
-        "systemUnderTest:",
-        "  service:",
-        "    definitions:",
-        "      - definition:",
-        "          source:",
-        "            filesystem:",
-        "              directory: .",
-        "          specs:",
-        "            - $script:specBasename"
-    ) -join "`n") + "`n"
-}
-
 function New-ValidateDockerArgs {
     $dockerArgs = @(
         "run", "--rm",
-        "-i",
         "--entrypoint", "sh",
         "-v", "${script:specDir}:/usr/src/app",
         "-w", "/usr/src/app"
@@ -161,14 +145,13 @@ function New-ValidateDockerArgs {
 
     return $dockerArgs + @(
         $script:SPECMATIC_DOCKER_IMAGE,
-        "-c", "cat > /tmp/specmatic.yaml && specmatic validate --config /tmp/specmatic.yaml"
+        "-c", "specmatic validate --spec-file `"$($script:specBasename)`""
     )
 }
 
 Resolve-SpecmaticImage
 
 Write-Host "Running validate for $SpecFile"
-$validateConfig = Get-ValidateConfig
 $validateArgs = New-ValidateDockerArgs
-$validateConfig | docker @validateArgs
+docker @validateArgs
 exit $LASTEXITCODE

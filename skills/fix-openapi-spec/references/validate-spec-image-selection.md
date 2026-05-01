@@ -31,6 +31,6 @@ Keep both script implementations in sync with this reference and with each other
 
 ## Validation Command
 
-Run validation through a generated config piped into Docker:
+Run validation directly against the mounted spec file using `--spec-file`, without generating or passing a Specmatic config:
 
-`cat > /tmp/specmatic.yaml && specmatic validate --config /tmp/specmatic.yaml`
+`specmatic validate --spec-file <spec-basename>`
