@@ -74,9 +74,10 @@ find_license_file() {
 
   for candidate in \
     "${HOME_LICENSE_DIR}/license.txt" \
+    "${HOME_LICENSE_DIR}/license.json" \
     "${HOME_LICENSE_DIR}/specmatic-license.txt" \
-    "${HOME_LICENSE_DIR}/specmatic.txt" \
-    "${HOME_LICENSE_DIR}/specmatic-license.txt"; do
+    "${HOME_LICENSE_DIR}/specmatic-license.json" \
+    "${HOME_LICENSE_DIR}/specmatic.txt"; do
     if [[ -f "${candidate}" ]]; then
       printf '%s\n' "${candidate}"
       return 0
@@ -85,8 +86,9 @@ find_license_file() {
 
   candidate="$(find "${HOME_LICENSE_DIR}" -maxdepth 1 -type f \( \
     -iname '*license*' -o \
+    -iname 'specmatic*.json' -o \
     -iname 'specmatic*.txt' \
-  \) | head -n 1 || true)"
+  \) ! -iname 'specmatic.json' | head -n 1 || true)"
 
   if [[ -n "${candidate}" ]]; then
     printf '%s\n' "${candidate}"
