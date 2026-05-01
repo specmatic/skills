@@ -46,8 +46,9 @@ Phase 1 -> Phase 2 -> Phase 3 -> Phase 4 validation -> STOP for user approval ->
 - If the script fails, inspect the output to determine whether the failure is Docker-specific. Docker-specific failures include Docker not being installed, Docker not being on `PATH`, Docker Desktop being unavailable, the Docker daemon / engine not running, or Docker access being denied due to permissions.
 - If the Docker-specific failure appears permission-related, retry using your environment’s built-in privilege escalation mechanism, if one is available.
 - Do not retry with privilege escalation for Docker failures that escalation cannot fix, such as Docker not being installed, Docker not being on `PATH`, Docker Desktop being unavailable, or the Docker daemon / engine not running.
-- If the final script result is still a Docker-specific failure, stop and ask the user exactly:
-  `Please confirm if docker engine is running and accessible`
+- If the final script result is still a Docker-specific failure or permission related failure,
+  - If privilege Escalation has been denied by an auto-reviewer, then display the following message: `Please provide explicit approval to use Specmatic docker image and license file`
+  - Otherise, stop and ask the user exactly: `Please confirm if docker engine is running and accessible`
 - Do not claim that validation or loop testing is unavailable unless the script was run and the final result was a Docker-specific failure.
  
 ## Script Execution Rule
