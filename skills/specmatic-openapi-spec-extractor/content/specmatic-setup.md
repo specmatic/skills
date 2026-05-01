@@ -98,7 +98,7 @@ systemUnderTest:
       #   path: ./specmatic/dictionary.yaml
 specmatic:
   # license:
-  #   path: /usr/src/app/.specmatic/<license-file-name>
+  #   path: <user_provided_license>
   settings:
     test:
       schemaResiliencyTests: all
@@ -114,19 +114,17 @@ specmatic:
 - Always set `specmatic.settings.test.schemaResiliencyTests: all`.
 - Do not add `specmatic.settings.test.maxTestRequestCombinations` by default.
 - Add `maxTestRequestCombinations` only when too many tests are being generated or runtime is too high.
-- Configure `specmatic.license.path` only if the license file is actually present.
-- When present, point `specmatic.license.path` at the in-container path `/usr/src/app/.specmatic/<license-file-name>`.
 - License discovery source is the user home `.specmatic` directory:
   - macOS/Linux: `~/.specmatic`
   - Windows: `$HOME/.specmatic` or `%USERPROFILE%\\.specmatic`
-- Generated runners should sniff that directory, copy the discovered license into the current working directory under `./.specmatic/` when needed, and mount that directory into Docker.
-- When a license is discovered, generated runners must also sync `specmatic.yaml` so `specmatic.license.path` points at `/usr/src/app/.specmatic/<license-file-name>` before running Specmatic.
-- If the license file is absent, omit `specmatic.license` entirely and let Specmatic use its built-in trial license.
+- Generated runners should not guess license filenames.
+- If the home `.specmatic` directory exists, mount that directory into the container at `/root/.specmatic`.
+- Do not rewrite `specmatic.yaml` for license wiring in this flow.
+- Fallback only: if home-directory mounting proves insufficient in a real run, the agent may add `specmatic.license.path` under the top-level `specmatic` section and point it at the mounted in-container license location for that specific rerun.
 - If the license file is absent, do not stop the loop up front. Continue with the built-in trial.
 - If a later Specmatic command fails because of a trial-license or enterprise-feature limit, ask the user for either:
   - a direct license file path, or
   - a license placed under their home `.specmatic` directory
-- If the user shares a direct path, configure `specmatic.yaml` to point at the mounted in-container location for that file and mount it into Docker for the rerun.
 - Do not fail the workflow only because the enterprise license file is missing.
 - Treat any config key outside schema as invalid.
 - Default supported topology: host-run SUT only. Containerized-SUT and Docker Compose networking are out of scope for this iteration.
@@ -310,7 +308,7 @@ macOS:
 ```bash
 docker run --rm \
   -v "$(pwd):/usr/src/app" \
-  -v "$(pwd)/.specmatic:/usr/src/app/.specmatic" \
+  -v "${HOME}/.specmatic:/root/.specmatic:ro" \
   -w /usr/src/app \
   <resolved-specmatic-image> validate
 ```
@@ -321,7 +319,7 @@ Linux:
 docker run --rm \
   --add-host host.docker.internal:host-gateway \
   -v "$(pwd):/usr/src/app" \
-  -v "$(pwd)/.specmatic:/usr/src/app/.specmatic" \
+  -v "${HOME}/.specmatic:/root/.specmatic:ro" \
   -w /usr/src/app \
   <resolved-specmatic-image> validate
 ```
@@ -331,7 +329,7 @@ Windows PowerShell:
 ```powershell
 docker run --rm `
   -v "${PWD}:/usr/src/app" `
-  -v "${PWD}/.specmatic:/usr/src/app/.specmatic" `
+  -v "${HOME}/.specmatic:/root/.specmatic:ro" `
   -w /usr/src/app `
   <resolved-specmatic-image> validate
 ```
@@ -345,7 +343,7 @@ macOS:
 ```bash
 docker run --rm \
   -v "$(pwd)/specmatic:/usr/src/app/specmatic" \
-  -v "$(pwd)/.specmatic:/usr/src/app/.specmatic" \
+  -v "${HOME}/.specmatic:/root/.specmatic:ro" \
   -v "$(pwd)/specmatic.yaml:/usr/src/app/specmatic.yaml" \
   -v "$(pwd)/build/reports:/usr/src/app/build/reports" \
   <resolved-specmatic-image> test \
@@ -359,7 +357,7 @@ Linux:
 docker run --rm \
   --add-host host.docker.internal:host-gateway \
   -v "$(pwd)/specmatic:/usr/src/app/specmatic" \
-  -v "$(pwd)/.specmatic:/usr/src/app/.specmatic" \
+  -v "${HOME}/.specmatic:/root/.specmatic:ro" \
   -v "$(pwd)/specmatic.yaml:/usr/src/app/specmatic.yaml" \
   -v "$(pwd)/build/reports:/usr/src/app/build/reports" \
   <resolved-specmatic-image> test \
@@ -372,7 +370,7 @@ Windows PowerShell:
 ```powershell
 docker run --rm `
   -v "${PWD}/specmatic:/usr/src/app/specmatic" `
-  -v "${PWD}/.specmatic:/usr/src/app/.specmatic" `
+  -v "${HOME}/.specmatic:/root/.specmatic:ro" `
   -v "${PWD}/specmatic.yaml:/usr/src/app/specmatic.yaml" `
   -v "${PWD}/build/reports:/usr/src/app/build/reports" `
   <resolved-specmatic-image> test `

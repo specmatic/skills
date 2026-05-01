@@ -42,10 +42,8 @@ Rules:
 - The script must not infer image validity from Specmatic command output.
 - If no local `specmatic` image is found, the script must tell the user it is trying to pull `specmatic/enterprise:latest`.
 - If the pull fails, the script must ask the user to pull the image manually and provide the image name so the workflow can continue.
-- Both scripts must sniff for a license under the user home `.specmatic` directory, copy the discovered file into the current working directory under `./.specmatic/` when needed, and mount that directory into Docker.
-- When a license is discovered, both scripts must also sync `specmatic.yaml` so `specmatic.license.path` points at `/usr/src/app/.specmatic/<license-file-name>` before running Specmatic.
-- If a license is found, generated `specmatic.yaml` must include `specmatic.license.path: /usr/src/app/.specmatic/<license-file-name>`.
-- If no license is found, omit `specmatic.license` entirely.
+- If the user home `.specmatic` directory exists, both scripts must mount that directory into the container at `/root/.specmatic`.
+- Both scripts must not guess license filenames or rewrite `specmatic.yaml` for license wiring.
 - Bash runner requirements:
   - resolve paths safely
   - add `--add-host host.docker.internal:host-gateway` only on Linux
@@ -67,7 +65,7 @@ Document:
 - that `PRE_TEST_SETUP_CMD` is optional and should remain unset for applications that do not require pre-test setup
 - the supported networking model: host-run SUT on `host.docker.internal`
 - that Linux runners add `--add-host host.docker.internal:host-gateway` and Windows/macOS do not
-- that generated runners sniff `~/.specmatic` or the equivalent home `.specmatic` directory on Windows, copy any discovered license into the repo-local `./.specmatic/`, and mount it into Docker
+- that generated runners mount `~/.specmatic` or the equivalent home `.specmatic` directory on Windows into `/root/.specmatic` when it exists
 - where and when to tune `specmatic.settings.test.maxTestRequestCombinations`
 - how to switch from full runs to filtered runs when needed
 - the minimal `PATH` filter syntax this skill supports for targeted runs:
@@ -106,7 +104,7 @@ Verify all of the following:
 - a successful `specmatic validate` result alone is not treated as completion; at least one live `specmatic test` attempt against the SUT must have been made unless a documented blocker prevented it
 - neither script uses `--network host`
 - Linux runner adds `--add-host host.docker.internal:host-gateway`
-- if a license is discovered, the runner copies it into `./.specmatic/`, mounts it into Docker, and `specmatic.yaml` targets `/usr/src/app/.specmatic/<license-file-name>`
+- if the home `.specmatic` directory exists, the runner mounts it into `/root/.specmatic`
 
 5. License-limited completion
 - if the user does not have a license, the workflow still produces deliverables

@@ -26,8 +26,7 @@ Rules:
 - If a Specmatic command fails for a trial-license or enterprise-feature limit reason, do not treat that as a hard blocker by itself.
 - Call out that those failures are due to licensing, report how many tests ran, passed, failed, and failed due to license limits, and ask the user exactly:
   `**Action Required:** Some Specmatic tests failed because no valid license was available. If you have a license, please share its path or add it under your home .specmatic directory.`
-- If the user shares a license path, configure `specmatic.yaml` to use it and mount it into Docker for the next run.
-- If the user adds the license under their home `.specmatic` directory, use the existing auto-discovery flow on the next run.
+- If the user adds the license under their home `.specmatic` directory, the next run should pick it up through the existing home-directory mount.
 - If the user does not have a license, continue to final reporting and deliverables, and state that full hardening could not be completed because of license-limited test failures.
 - If the loop stops for a Docker-specific failure, still prepare the final runnable assets from this skill, including `run_contract_tests.sh`, `run_contract_tests.ps1`, and `CONTRACT_TESTS_README.md`
 - State that the next blocked step is the Specmatic feedback loop only after a Docker command fails for a Docker-specific reason

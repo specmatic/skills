@@ -76,13 +76,14 @@ This skill should win over a generic extraction-only skill when:
 - If command output indicates a Docker-specific failure such as Docker not being installed, Docker not being on `PATH`, Docker Desktop not being available, or the Docker daemon / engine not running, stop and ask the user exactly:
   `**Action Required:** Please start the Docker engine, then confirm once it is running.`
 - If no license is found, continue the Specmatic feedback loop without a license.
-- If a license is found under the home `.specmatic` directory or provided directly by the user, ensure the mounted file is also wired into `specmatic.yaml` through `specmatic.license.path` before rerunning Specmatic.
+- If the user home `.specmatic` directory exists, mount it into the container at `/root/.specmatic`.
+- Do not guess license filenames or rewrite `specmatic.yaml` for license wiring in this skill.
+- Fallback only: if home-directory mounting proves insufficient in a real run, the agent may add `specmatic.license.path` under the top-level `specmatic` section and point it at the mounted in-container license location for that rerun.
 - Treat any Specmatic trial-limit or enterprise-feature-limit hit as a licensing-caused test failure, not as a hard workflow blocker.
 - If a Specmatic command fails for a trial-license or enterprise-feature limit reason, do not treat that as a hard blocker by itself.
 - Call out that those failures are due to licensing, report how many tests ran, passed, failed, and failed due to license limits, and ask the user exactly:
   `**Action Required:** Some Specmatic tests failed because no valid license was available. If you have a license, please share its path or add it under your home .specmatic directory.`
-- If the user shares a license path, configure `specmatic.yaml` to use it and mount it into Docker for the next run.
-- If the user adds the license under their home `.specmatic` directory, use the existing auto-discovery flow on the next run.
+- If the user adds the license under their home `.specmatic` directory, the next run should pick it up through the existing home-directory mount.
 - If the user does not have a license, continue to final reporting and deliverables, and state that full hardening could not be completed because of license-limited test failures.
 - Do not claim the Specmatic feedback loop is blocked on Docker until after a Docker command fails for a Docker-specific reason.
 - If it appears to be a permissions issue, try resolving it using your environment’s built-in privilege escalation mechanisms available to you.
@@ -103,7 +104,7 @@ Once the first spec has been extracted, the agent must execute these phases in o
 8. If failures show that the SUT cannot reach one or more downstream HTTP dependencies, identify all required downstream dependencies for the current batch, stand up a Specmatic stub for each dependency on its expected host port, generate or update stub examples for each dependency, and rerun the relevant validation or test step.
 9. If a Docker command fails for a Docker-specific reason, stop and ask the user exactly: `**Action Required:** Please start the Docker engine, then confirm once it is running.`
 10. If no license is found, continue the loop with the built-in trial. If a Specmatic command fails because of a trial-license or enterprise-feature limit, report that those failures are license-related, include counts for tests run, passed, failed, and failed due to license limits, and ask the user exactly: `**Action Required:** Some Specmatic tests failed because no valid license was available. If you have a license, please share its path or add it under your home .specmatic directory.`
-11. If the user shares a license path, configure `specmatic.yaml` to use it, mount it into Docker, and rerun the relevant validation or test step.
+11. If the user adds the license under their home `.specmatic` directory or otherwise resolves the missing license, rerun the relevant validation or test step.
 12. Prepare the final deliverables from this skill, including `run_contract_tests.sh`, `run_contract_tests.ps1`, and `CONTRACT_TESTS_README.md`, regardless of whether deterministic data setup is needed.
 13. If Docker is unavailable, stop only after clearly reporting that extraction and refinement are done, the runnable script and README have been prepared, and the next blocked step is the live Specmatic loop.
 

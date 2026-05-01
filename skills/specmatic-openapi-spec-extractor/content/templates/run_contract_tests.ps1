@@ -9,93 +9,13 @@ $RepoRoot = (Resolve-Path -LiteralPath $ScriptDir).Path
 $SpecmaticDir = Join-Path $RepoRoot "specmatic"
 $SpecmaticConfig = Join-Path $RepoRoot "specmatic.yaml"
 $ReportsDir = Join-Path $RepoRoot "build/reports"
-$LocalLicenseDir = Join-Path $RepoRoot ".specmatic"
 $UserSpecifiedSpecmaticImage = if ($env:SPECMATIC_DOCKER_IMAGE) { $env:SPECMATIC_DOCKER_IMAGE } else { $null }
 $SpecmaticDockerImage = $null
 $SutPort = if ($env:SUT_PORT) { $env:SUT_PORT } else { "<SUT_PORT>" }
 $PreTestSetupCommand = if ($env:PRE_TEST_SETUP_CMD) { $env:PRE_TEST_SETUP_CMD } else { $null }
 $HomeDir = if ($env:HOME) { $env:HOME } elseif ($env:USERPROFILE) { $env:USERPROFILE } else { [Environment]::GetFolderPath("UserProfile") }
 $HomeLicenseDir = Join-Path $HomeDir ".specmatic"
-$LicenseFileName = $null
 $PullSourceImage = "specmatic/enterprise:latest"
-
-function Find-LicenseFile {
-    if (-not (Test-Path -LiteralPath $HomeLicenseDir -PathType Container)) {
-        return $null
-    }
-
-    $preferredNames = @(
-        "license.txt",
-        "license.json",
-        "specmatic-license.txt",
-        "specmatic-license.json",
-        "specmatic.txt"
-    )
-
-    foreach ($name in $preferredNames) {
-        $candidate = Join-Path $HomeLicenseDir $name
-        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
-            return $candidate
-        }
-    }
-
-    $fallback = Get-ChildItem -LiteralPath $HomeLicenseDir -File |
-        Where-Object { ($_.Name -match "license" -or $_.Name -like "specmatic*.txt" -or $_.Name -like "specmatic*.json") -and $_.Name -ne "specmatic.json" } |
-        Select-Object -First 1
-
-    if ($fallback) {
-        return $fallback.FullName
-    }
-
-    return $null
-}
-
-function Prepare-License {
-    $sourceLicense = Find-LicenseFile
-    if (-not $sourceLicense) {
-        return
-    }
-
-    New-Item -ItemType Directory -Path $LocalLicenseDir -Force | Out-Null
-    $script:LicenseFileName = Split-Path -Leaf $sourceLicense
-    Copy-Item -LiteralPath $sourceLicense -Destination (Join-Path $LocalLicenseDir $script:LicenseFileName) -Force
-}
-
-function Sync-SpecmaticLicenseConfig {
-    if (-not $script:LicenseFileName) {
-        return
-    }
-
-    if (-not (Test-Path -LiteralPath $SpecmaticConfig -PathType Leaf)) {
-        return
-    }
-
-    $desiredPath = "/usr/src/app/.specmatic/$($script:LicenseFileName)"
-    $content = Get-Content -LiteralPath $SpecmaticConfig -Raw
-
-    if ($content.Contains($desiredPath)) {
-        return
-    }
-
-    if ($content -match '(?m)^(\s*path:\s*/usr/src/app/\.specmatic/).+$') {
-        $updated = [regex]::Replace(
-            $content,
-            '(?m)^(\s*path:\s*/usr/src/app/\.specmatic/).+$',
-            "`$1$($script:LicenseFileName)",
-            1
-        )
-        Set-Content -LiteralPath $SpecmaticConfig -Value $updated
-        return
-    }
-
-    $updated = [regex]::Replace(
-        $content,
-        '(?m)^specmatic:$',
-        "specmatic:`n  license:`n    path: $desiredPath",
-        1
-    )
-    Set-Content -LiteralPath $SpecmaticConfig -Value $updated
-}
 function Test-ImageExistsLocally {
     param([Parameter(Mandatory = $true)][string]$Image)
 
@@ -168,8 +88,6 @@ if ($IsLinuxHost) {
 }
 
 New-Item -ItemType Directory -Path $ReportsDir -Force | Out-Null
-Prepare-License
-Sync-SpecmaticLicenseConfig
 Resolve-EnterpriseImage
 
 # Optional runtime throttle for slow or overly large suites.
@@ -199,9 +117,9 @@ try {
         "-w", "/usr/src/app"
     )
 
-    if ($LicenseFileName) {
-        $ValidateArgs += @("-v", "${LocalLicenseDir}:/usr/src/app/.specmatic")
-        $TestArgs += @("-v", "${LocalLicenseDir}:/usr/src/app/.specmatic")
+    if (Test-Path -LiteralPath $HomeLicenseDir -PathType Container) {
+        $ValidateArgs += @("-v", "${HomeLicenseDir}:/root/.specmatic:ro")
+        $TestArgs += @("-v", "${HomeLicenseDir}:/root/.specmatic:ro")
     }
 
     Invoke-SpecmaticDockerCommand -DockerArgs $ValidateArgs -SpecmaticArgs @("validate")
