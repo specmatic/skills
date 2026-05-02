@@ -62,7 +62,7 @@ Ignore any old test files or log files that existed before this conversation. Yo
 ### Phase 1: Setup
 
 1. Create a copy of the input spec path for edits named `<spec-name>-updated.<ext>` in the same directory as the source spec.
-  - Note: Always edit the `-updated` copy, not the original spec.
+  - Note: Always edit the `-updated` copy. Do not update or fix the original spec.
 2. Create a single append-only actions log file named `fix-log-<spec-name>-<current-date>.md` in the spec directory, with the following initial content:
   ```
   # Actions log for <spec-file>
@@ -189,11 +189,9 @@ Fixes applied:
 
 ### Phase 4: Address load time errors and warnings
 
-Note: Even if the user asks to fix the spec, they really want control over what gets fixed, and how the fix is done. So Phase 4 validation may be run automatically, but Phase 4 fixes must never be applied automatically.
-
 1. Run the validate command on the `<spec-name>-updated.<ext>` spec.
 2. If there are no errors or warnings, report to the user that the spec is now valid and can be used for testing and mocking with Specmatic, and end the process.
-3. If there are errors or warnings, do NOT fix any errors or warnings. Do not infer approval from the original request, or from prior sessions. Only proceed if the next user message explicitly approves fixing the listed Phase 4 issues or requests specific fixes. Instead, list them out (not just the ids, include the descriptions if Specmatic provided it), and ask the user if they want to address spec defects on the `-updated` copy.
+3. If there are errors or warnings, list out each issue in it's own section, including: issue path if provided, issue description, a reasonable option you can come up with for fixing it, and if the fix is to change or add something then show a spec snippet of the fix. Then ask the user which of the spec defects on the `-updated` copy they want your help to address, how they want to address it, before applying any fix. Do NOT fix any errors or warnings automatically. Do not infer approval to fix from the original request, or from prior sessions. Only proceed if the next user message explicitly approves fixing any issues or requests specific fixes.
 4. For each load-time error or warning that the users wants to address:
   - Classify and log the error following the same classification and logging contract as in Phase 2.
 6. Apply allowed fixes to the `-updated` copy based on the error messages and classification, following the same guidelines for allowed fixes as in Phase 2.
