@@ -308,7 +308,8 @@ macOS:
 
 ```bash
 docker run --rm \
-  -v "$(pwd):/usr/src/app" \
+  -v "$(pwd)/specmatic:/usr/src/app/specmatic" \
+  -v "$(pwd)/specmatic.yaml:/usr/src/app/specmatic.yaml" \
   -v "${HOME}/.specmatic:/root/.specmatic:ro" \
   -w /usr/src/app \
   <resolved-specmatic-image> validate
@@ -319,7 +320,8 @@ Linux:
 ```bash
 docker run --rm \
   --add-host host.docker.internal:host-gateway \
-  -v "$(pwd):/usr/src/app" \
+  -v "$(pwd)/specmatic:/usr/src/app/specmatic" \
+  -v "$(pwd)/specmatic.yaml:/usr/src/app/specmatic.yaml" \
   -v "${HOME}/.specmatic:/root/.specmatic:ro" \
   -w /usr/src/app \
   <resolved-specmatic-image> validate
@@ -329,7 +331,8 @@ Windows PowerShell:
 
 ```powershell
 docker run --rm `
-  -v "${PWD}:/usr/src/app" `
+  -v "${PWD}/specmatic:/usr/src/app/specmatic" `
+  -v "${PWD}/specmatic.yaml:/usr/src/app/specmatic.yaml" `
   -v "${HOME}/.specmatic:/root/.specmatic:ro" `
   -w /usr/src/app `
   <resolved-specmatic-image> validate
