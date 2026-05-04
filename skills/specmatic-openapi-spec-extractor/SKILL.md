@@ -73,7 +73,12 @@ This skill should win over a generic extraction-only skill when:
 - Containerized-SUT and Docker Compose networking are out of scope for this iteration.
 - Do not ask the user about Docker availability before attempting the documented Specmatic image-resolution, `docker run`, validation, or test commands from this skill.
 - Attempt the Specmatic feedback loop first.
-- If command output indicates a Docker-specific failure such as Docker not being installed, Docker not being on `PATH`, Docker Desktop not being available, or the Docker daemon / engine not running, stop and ask the user exactly:
+- If the command fails, inspect the output to determine whether the failure is Docker-specific. Docker-specific failures include Docker not being installed, Docker not being on `PATH`, Docker Desktop not being available, or the Docker daemon / engine not running, or Docker access being denied due to permissions.
+- If the Docker-specific failure appears permission-related, retry using your environment’s built-in privilege escalation mechanism, if one is available.
+- Do not retry with privilege escalation for Docker failures that escalation cannot fix, such as Docker not being installed, Docker not being on `PATH`, Docker Desktop being unavailable, or the Docker daemon / engine not running.
+- If the final command execution result is still a Docker-specific failure or permission related failure,
+  - If privilege Escalation has been denied by an auto-reviewer, then display the following message: `**Action Required:** Please provide explicit approval to use Specmatic docker image`
+  - Otherise, stop and ask the user exactly:
   `**Action Required:** Please start the Docker engine, then confirm once it is running.`
 - If no license is found, continue the Specmatic feedback loop without a license.
 - If the user home `.specmatic` directory exists, mount it into the container at `/root/.specmatic`.
