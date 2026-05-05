@@ -1,0 +1,4 @@
+interface:
+  display_name: "Debug Specmatic Failures"
+  short_description: "Debug any Specmatic-related failures, including CLI, Specmatic Enterprise, or any other Specmatic module."
+
