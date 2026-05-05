@@ -11,8 +11,13 @@ USER_SPECIFIED_SPECMATIC_IMAGE="${SPECMATIC_DOCKER_IMAGE:-}"
 SPECMATIC_DOCKER_IMAGE=""
 SUT_PORT="${SUT_PORT:-<SUT_PORT>}"
 PRE_TEST_SETUP_CMD="${PRE_TEST_SETUP_CMD:-}"
+SUT_START_CMD="${SUT_START_CMD:-}"
+SUT_HEALTHCHECK_URL="${SUT_HEALTHCHECK_URL:-}"
+SUT_STARTUP_WAIT_SECONDS="${SUT_STARTUP_WAIT_SECONDS:-60}"
 HOME_LICENSE_DIR="${HOME}/.specmatic"
 PULL_SOURCE_IMAGE="specmatic/enterprise:latest"
+STARTED_SUT_PID=""
+HOST_ALIAS_FALLBACK_ADDED="false"
 
 image_exists_locally() {
   local image="$1"
@@ -87,10 +92,91 @@ run_specmatic_command() {
   docker "${docker_args[@]}" "${SPECMATIC_DOCKER_IMAGE}" "$@"
 }
 
+ensure_host_alias_fallback() {
+  if [[ "${HOST_ALIAS_FALLBACK_ADDED}" == "true" ]]; then
+    return 0
+  fi
+
+  DOCKER_ARGS+=(--add-host host.docker.internal:host-gateway)
+  HOST_ALIAS_FALLBACK_ADDED="true"
+}
+
+rebuild_docker_args() {
+  VALIDATE_ARGS=(
+    "${DOCKER_ARGS[@]}"
+    -v "${SPECMATIC_DIR}:/usr/src/app/specmatic"
+    -v "${SPECMATIC_CONFIG}:/usr/src/app/specmatic.yaml"
+    -w /usr/src/app
+  )
+
+  TEST_ARGS=(
+    "${DOCKER_ARGS[@]}"
+    -v "${SPECMATIC_DIR}:/usr/src/app/specmatic"
+    -v "${SPECMATIC_CONFIG}:/usr/src/app/specmatic.yaml"
+    -v "${REPORTS_DIR}:/usr/src/app/build/reports"
+    -w /usr/src/app
+  )
+
+  if [[ -d "${HOME_LICENSE_DIR}" ]]; then
+    VALIDATE_ARGS+=(-v "${HOME_LICENSE_DIR}:/root/.specmatic:ro")
+    TEST_ARGS+=(-v "${HOME_LICENSE_DIR}:/root/.specmatic:ro")
+  fi
+}
+
+run_specmatic_test_with_fallback() {
+  local output=""
+
+  if output="$(run_specmatic_command TEST_ARGS test --host=host.docker.internal --port="${SUT_PORT}" 2>&1)"; then
+    printf '%s\n' "${output}"
+    return 0
+  fi
+
+  printf '%s\n' "${output}"
+
+  if [[ "${output}" == *"host.docker.internal"* ]] && [[ "$(uname -s)" != "Linux" ]]; then
+    echo "Retrying with explicit host.docker.internal mapping because Docker DNS did not resolve the host alias."
+    ensure_host_alias_fallback
+    rebuild_docker_args
+    run_specmatic_command TEST_ARGS test --host=host.docker.internal --port="${SUT_PORT}"
+    return 0
+  fi
+
+  return 1
+}
+
+cleanup() {
+  if [[ -n "${STARTED_SUT_PID}" ]] && kill -0 "${STARTED_SUT_PID}" >/dev/null 2>&1; then
+    kill "${STARTED_SUT_PID}" >/dev/null 2>&1 || true
+  fi
+}
+
+wait_for_sut() {
+  local deadline=$((SECONDS + SUT_STARTUP_WAIT_SECONDS))
+
+  while (( SECONDS < deadline )); do
+    if [[ -n "${SUT_HEALTHCHECK_URL}" ]]; then
+      if curl -fsS "${SUT_HEALTHCHECK_URL}" >/dev/null 2>&1; then
+        return 0
+      fi
+    else
+      if curl -sS -o /dev/null "http://127.0.0.1:${SUT_PORT}/"; then
+        return 0
+      fi
+    fi
+
+    sleep 2
+  done
+
+  echo "**Action Required:** The SUT is not reachable on localhost:${SUT_PORT}. Start it on the host or provide the correct reachable host port from Docker."
+  return 1
+}
+
 DOCKER_ARGS=(run --rm)
 if [[ "$(uname -s)" == "Linux" ]]; then
   DOCKER_ARGS+=(--add-host host.docker.internal:host-gateway)
 fi
+
+trap cleanup EXIT
 
 mkdir -p "${REPORTS_DIR}"
 resolve_enterprise_image
@@ -107,30 +193,21 @@ if [[ -n "${PRE_TEST_SETUP_CMD}" ]]; then
   )
 fi
 
-VALIDATE_ARGS=(
-  "${DOCKER_ARGS[@]}"
-  -v "${REPO_ROOT}:/usr/src/app"
-  -w /usr/src/app
-)
-
-TEST_ARGS=(
-  "${DOCKER_ARGS[@]}"
-  -v "${SPECMATIC_DIR}:/usr/src/app/specmatic"
-  -v "${SPECMATIC_CONFIG}:/usr/src/app/specmatic.yaml"
-  -v "${REPORTS_DIR}:/usr/src/app/build/reports"
-  -w /usr/src/app
-)
-
-if [[ -d "${HOME_LICENSE_DIR}" ]]; then
-  VALIDATE_ARGS+=(-v "${HOME_LICENSE_DIR}:/root/.specmatic:ro")
-  TEST_ARGS+=(-v "${HOME_LICENSE_DIR}:/root/.specmatic:ro")
+if [[ -n "${SUT_START_CMD}" ]]; then
+  echo "Starting SUT: ${SUT_START_CMD}"
+  (
+    cd "${REPO_ROOT}"
+    bash -lc "${SUT_START_CMD}"
+  ) >"${REPORTS_DIR}/sut.log" 2>&1 &
+  STARTED_SUT_PID=$!
 fi
+
+wait_for_sut
+
+rebuild_docker_args
 
 run_specmatic_command VALIDATE_ARGS validate
 
-run_specmatic_command TEST_ARGS \
-  test \
-  --host=host.docker.internal \
-  --port="${SUT_PORT}"
+run_specmatic_test_with_fallback
 
 echo "Done. HTML report: ${REPORTS_DIR}/specmatic/html/index.html"

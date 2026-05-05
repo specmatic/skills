@@ -47,6 +47,7 @@ Rules:
 - Bash runner requirements:
   - resolve paths safely
   - add `--add-host host.docker.internal:host-gateway` only on Linux
+  - retry with `--add-host host.docker.internal:host-gateway` on macOS/Windows if `host.docker.internal` fails to resolve
   - avoid `--network host`
 - PowerShell runner requirements:
   - resolve absolute paths before mounting
@@ -69,6 +70,7 @@ Document:
 - that `PRE_TEST_SETUP_CMD` is optional and should remain unset for applications that do not require pre-test setup
 - the supported networking model: host-run SUT on `host.docker.internal`
 - that Linux runners add `--add-host host.docker.internal:host-gateway` and Windows/macOS do not
+- that Windows/macOS runners may still need the same host mapping as a fallback when Docker Desktop host alias resolution is broken by environment drift such as custom daemon DNS
 - that generated runners mount `~/.specmatic` or the equivalent home `.specmatic` directory on Windows into `/root/.specmatic` when it exists
 - where and when to tune `specmatic.settings.test.maxTestRequestCombinations`
 - how to switch from full runs to filtered runs when needed
@@ -82,6 +84,15 @@ Document:
   - passed
   - failed
   - failed due to license limits
+- how incomplete hardening results are reported when the live loop exposes runtime or environment blockers:
+  - total tests run
+  - passed
+  - failed
+  - errors
+  - grouped failure reasons
+  - what remains fixable in-repo
+  - what is blocked by downstream dependencies or environment drift
+  - the exact `**Action Required:**` prompt when user action is required
 - known non-fixable failures
 
 Do not make the user infer the rerun path from a descriptive README. The README must plainly say which command to run.
@@ -121,6 +132,13 @@ Verify all of the following:
 - if the SUT depends on external HTTP APIs, the hardening loop attempts Specmatic stubs for all required downstream dependencies before reporting runtime blockers
 - the final summary distinguishes downstream-stubbed fixes from remaining non-fixable runtime issues after the required downstream stub set was available
 
+7. Final reporting completeness
+- the final summary includes the observed live test counts when available: total run, passed, failed, errors, and license-limited failures when applicable
+- the final summary explains why failed tests failed in grouped categories instead of only saying blockers remain
+- the final summary states what is still to be fixed and whether each remaining item is fixable in-repo, blocked by external dependencies, or blocked by environment drift
+- if the detailed report for the most relevant run is missing or overwritten, the final summary says so explicitly
+- if user action is required, the final summary includes an exact `**Action Required:**` prompt rather than implying the next step indirectly
+
 ## Common Issues After Extraction
 
 | Issue | Symptom | Fix |
@@ -152,7 +170,7 @@ Verify all of the following:
 | `Cannot connect to the Docker daemon` | Docker Engine is not running | Start Docker Desktop or Engine, then rerun |
 | Specmatic cannot reach the SUT | Wrong SUT port, SUT not started, or bind mismatch | Start the SUT first and verify `SUT_PORT` or `baseUrl` |
 | `host.docker.internal` connectivity issues on Linux | Docker host alias not configured in that environment | Keep `--add-host host.docker.internal:host-gateway` in the Linux runner |
-| `host.docker.internal` connectivity issues on Windows/macOS | SUT is not listening on the expected host port | Verify the SUT is running on the host and `SUT_PORT` matches |
+| `host.docker.internal` connectivity issues on Windows/macOS | SUT is not listening on the expected host port, or Docker Desktop host alias resolution is broken by environment configuration | Verify the SUT is running on the host and `SUT_PORT` matches; if the alias does not resolve from a plain container, retry with `--add-host host.docker.internal:host-gateway` and inspect Docker daemon DNS settings |
 | Overlay changes are ignored | `overlayFilePath` not enabled or wrong path | Correct the runtime spec entry in `specmatic.yaml` |
 | Stub returns invalid or empty responses | Stub spec lacks concrete examples or wrong port mapping | Add response examples and verify stub port mapping |
 | Trial-limit or enterprise-feature failure without a license | No valid license was available for all Specmatic test coverage | Report the license-limited failures, ask the user for a direct license path or a license under their home `.specmatic` directory, and continue to deliverables if no license is available |

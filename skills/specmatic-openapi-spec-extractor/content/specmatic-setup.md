@@ -135,6 +135,8 @@ specmatic:
 
 - Docker Desktop on Windows and macOS already resolves `host.docker.internal` for containers.
 - Linux typically does not, so Specmatic `docker run` commands must add `--add-host host.docker.internal:host-gateway`.
+- If `host.docker.internal` does not resolve on macOS or Windows, retry with `--add-host host.docker.internal:host-gateway`.
+- This usually means Docker Desktop is running with custom daemon DNS settings that bypass the built-in host alias.
 - Do not use `--network host` for this skill.
 
 ## Overlay Rules
@@ -162,7 +164,7 @@ Rules:
 
 This skill only needs the minimal `PATH` filter syntax for targeted contract-test batches.
 
-- Configure it under `systemUnderTest.service.runOptions.openapi.specs[].spec.filter`.
+- Configure it under `systemUnderTest.service.runOptions.openapi.filter`.
 - Exact path: `PATH='/users'`
 - Subtree wildcard: `PATH='/users/*'`
 - Multiple paths in one filter: `PATH='/users,/products'`
@@ -301,14 +303,15 @@ Generation rules:
   - `id`
 - Additional top-level keys are allowed and should be treated as example data fields carried alongside the request/response pair.
 
-Run `specmatic validate` before running tests so Specmatic validates the discovered specifications and examples together from the mounted workspace.
+Run `specmatic validate` before running tests so Specmatic validates the generated specifications and examples for this workflow from an isolated mounted workspace.
 This is only a preflight step. A successful `validate` run does not complete the skill; it must be followed by `specmatic test` against the running SUT.
 
 macOS:
 
 ```bash
 docker run --rm \
-  -v "$(pwd):/usr/src/app" \
+  -v "$(pwd)/specmatic:/usr/src/app/specmatic" \
+  -v "$(pwd)/specmatic.yaml:/usr/src/app/specmatic.yaml" \
   -v "${HOME}/.specmatic:/root/.specmatic:ro" \
   -w /usr/src/app \
   <resolved-specmatic-image> validate
@@ -319,7 +322,8 @@ Linux:
 ```bash
 docker run --rm \
   --add-host host.docker.internal:host-gateway \
-  -v "$(pwd):/usr/src/app" \
+  -v "$(pwd)/specmatic:/usr/src/app/specmatic" \
+  -v "$(pwd)/specmatic.yaml:/usr/src/app/specmatic.yaml" \
   -v "${HOME}/.specmatic:/root/.specmatic:ro" \
   -w /usr/src/app \
   <resolved-specmatic-image> validate
@@ -329,7 +333,8 @@ Windows PowerShell:
 
 ```powershell
 docker run --rm `
-  -v "${PWD}:/usr/src/app" `
+  -v "${PWD}/specmatic:/usr/src/app/specmatic" `
+  -v "${PWD}/specmatic.yaml:/usr/src/app/specmatic.yaml" `
   -v "${HOME}/.specmatic:/root/.specmatic:ro" `
   -w /usr/src/app `
   <resolved-specmatic-image> validate
