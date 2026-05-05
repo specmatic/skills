@@ -1,6 +1,6 @@
 ---
 name: debug-specmatic-failures
-description: Debug any Specmatic command or runtime failure across mock/stub, test, validate, backward compatibility, CLI, Docker, JUnit, specmatic-core, junit5-support, or Specmatic Enterprise. Use for mocks not starting, unexpected mock 400s, unmatched requests, provider mismatches, config or harness issues, logs, versions, or possible Specmatic bugs. If diagnosis identifies a concrete OpenAPI schema, parser, resolver, example, enum, constraint, validation, or contract-generation defect, report it and, when the user has asked for a fix, attempt the focused fix directly. Use fix-openapi-spec only when spec loading/generation fails with vague, esoteric, opaque, or nonsensical errors that need iterative spec hardening.
+description: Debug any Specmatic-related failures, including CLI, Specmatic Enterprise, or any other Specmatic module.
 ---
 
 # Debug Specmatic Failures
