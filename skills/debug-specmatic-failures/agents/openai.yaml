@@ -1,4 +1,4 @@
 interface:
   display_name: "Debug Specmatic Failures"
-  short_description: "Debug Specmatic mock, stub, test, runtime, and known version failures."
-  default_prompt: "Debug this Specmatic command or runtime failure. Identify whether it is a project, spec/load, mock/stub, provider, config, harness, known Specmatic bug, or likely Specmatic contradiction, and recommend the next action."
+  short_description: "Debug any Specmatic-related failures, including CLI, Specmatic Enterprise, or any other Specmatic module."
+
