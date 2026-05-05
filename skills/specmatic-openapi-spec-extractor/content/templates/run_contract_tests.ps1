@@ -13,9 +13,14 @@ $UserSpecifiedSpecmaticImage = if ($env:SPECMATIC_DOCKER_IMAGE) { $env:SPECMATIC
 $SpecmaticDockerImage = $null
 $SutPort = if ($env:SUT_PORT) { $env:SUT_PORT } else { "<SUT_PORT>" }
 $PreTestSetupCommand = if ($env:PRE_TEST_SETUP_CMD) { $env:PRE_TEST_SETUP_CMD } else { $null }
+$SutStartCommand = if ($env:SUT_START_CMD) { $env:SUT_START_CMD } else { $null }
+$SutHealthcheckUrl = if ($env:SUT_HEALTHCHECK_URL) { $env:SUT_HEALTHCHECK_URL } else { $null }
+$SutStartupWaitSeconds = if ($env:SUT_STARTUP_WAIT_SECONDS) { [int]$env:SUT_STARTUP_WAIT_SECONDS } else { 60 }
 $HomeDir = if ($env:HOME) { $env:HOME } elseif ($env:USERPROFILE) { $env:USERPROFILE } else { [Environment]::GetFolderPath("UserProfile") }
 $HomeLicenseDir = Join-Path $HomeDir ".specmatic"
 $PullSourceImage = "specmatic/enterprise:latest"
+$StartedSutProcess = $null
+$HostAliasFallbackAdded = $false
 function Test-ImageExistsLocally {
     param([Parameter(Mandatory = $true)][string]$Image)
 
@@ -115,6 +120,87 @@ function Invoke-SpecmaticDockerCommand {
 
     throw ($output | Out-String).Trim()
 }
+
+function Add-HostAliasFallback {
+    if ($script:HostAliasFallbackAdded) {
+        return
+    }
+
+    $script:DockerArgs += @("--add-host", "host.docker.internal:host-gateway")
+    $script:HostAliasFallbackAdded = $true
+}
+
+function Rebuild-DockerArgs {
+    $script:ValidateArgs = $script:DockerArgs + @(
+        "-v", "${SpecmaticDir}:/usr/src/app/specmatic",
+        "-v", "${SpecmaticConfig}:/usr/src/app/specmatic.yaml",
+        "-w", "/usr/src/app"
+    )
+
+    $script:TestArgs = $script:DockerArgs + @(
+        "-v", "${SpecmaticDir}:/usr/src/app/specmatic",
+        "-v", "${SpecmaticConfig}:/usr/src/app/specmatic.yaml",
+        "-v", "${ReportsDir}:/usr/src/app/build/reports",
+        "-w", "/usr/src/app"
+    )
+
+    if (Test-Path -LiteralPath $HomeLicenseDir -PathType Container) {
+        $script:ValidateArgs += @("-v", "${HomeLicenseDir}:/root/.specmatic:ro")
+        $script:TestArgs += @("-v", "${HomeLicenseDir}:/root/.specmatic:ro")
+    }
+}
+
+function Invoke-SpecmaticTestWithFallback {
+    try {
+        Invoke-SpecmaticDockerCommand -DockerArgs $script:TestArgs -SpecmaticArgs @(
+            "test",
+            "--host=host.docker.internal",
+            "--port=$SutPort"
+        )
+    } catch {
+        $message = $_.Exception.Message
+        if (-not $IsLinuxHost -and $message -like "*host.docker.internal*") {
+            Write-Host "Retrying with explicit host.docker.internal mapping because Docker DNS did not resolve the host alias."
+            Add-HostAliasFallback
+            Rebuild-DockerArgs
+            Invoke-SpecmaticDockerCommand -DockerArgs $script:TestArgs -SpecmaticArgs @(
+                "test",
+                "--host=host.docker.internal",
+                "--port=$SutPort"
+            )
+            return
+        }
+
+        throw $message
+    }
+}
+
+function Wait-ForSut {
+    $deadline = (Get-Date).AddSeconds($script:SutStartupWaitSeconds)
+
+    while ((Get-Date) -lt $deadline) {
+        if ($script:SutHealthcheckUrl) {
+            try {
+                Invoke-WebRequest -Uri $script:SutHealthcheckUrl -UseBasicParsing | Out-Null
+                return
+            } catch {
+            }
+        } else {
+            try {
+                Invoke-WebRequest -Uri "http://127.0.0.1:$($script:SutPort)/" -UseBasicParsing | Out-Null
+                return
+            } catch {
+                if ($_.Exception.Response) {
+                    return
+                }
+            }
+        }
+
+        Start-Sleep -Seconds 2
+    }
+
+    throw "**Action Required:** The SUT is not reachable on localhost:$($script:SutPort). Start it on the host or provide the correct reachable host port from Docker."
+}
 $IsLinuxHost = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
     [System.Runtime.InteropServices.OSPlatform]::Linux
 )
@@ -142,30 +228,19 @@ if ($PreTestSetupCommand) {
 }
 
 try {
-    $ValidateArgs = $DockerArgs + @(
-        "-v", "${RepoRoot}:/usr/src/app",
-        "-w", "/usr/src/app"
-    )
-
-    $TestArgs = $DockerArgs + @(
-        "-v", "${SpecmaticDir}:/usr/src/app/specmatic",
-        "-v", "${SpecmaticConfig}:/usr/src/app/specmatic.yaml",
-        "-v", "${ReportsDir}:/usr/src/app/build/reports",
-        "-w", "/usr/src/app"
-    )
-
-    if (Test-Path -LiteralPath $HomeLicenseDir -PathType Container) {
-        $ValidateArgs += @("-v", "${HomeLicenseDir}:/root/.specmatic:ro")
-        $TestArgs += @("-v", "${HomeLicenseDir}:/root/.specmatic:ro")
+    if ($SutStartCommand) {
+        Write-Host "Starting SUT: $SutStartCommand"
+        $sutLogPath = Join-Path $ReportsDir "sut.log"
+        $StartedSutProcess = Start-Process -FilePath "powershell" -ArgumentList "-NoProfile", "-Command", $SutStartCommand -WorkingDirectory $RepoRoot -RedirectStandardOutput $sutLogPath -RedirectStandardError $sutLogPath -PassThru
     }
 
-    Invoke-SpecmaticDockerCommand -DockerArgs $ValidateArgs -SpecmaticArgs @("validate")
+    Wait-ForSut
 
-    Invoke-SpecmaticDockerCommand -DockerArgs $TestArgs -SpecmaticArgs @(
-        "test",
-        "--host=host.docker.internal",
-        "--port=$SutPort"
-    )
+    Rebuild-DockerArgs
+
+    Invoke-SpecmaticDockerCommand -DockerArgs $script:ValidateArgs -SpecmaticArgs @("validate")
+
+    Invoke-SpecmaticTestWithFallback
 
     Write-Host "Done. HTML report: $ReportsDir/specmatic/html/index.html"
 } catch {
@@ -174,4 +249,8 @@ try {
     }
 
     throw $_.Exception.Message
+} finally {
+    if ($StartedSutProcess -and -not $StartedSutProcess.HasExited) {
+        Stop-Process -Id $StartedSutProcess.Id -Force -ErrorAction SilentlyContinue
+    }
 }

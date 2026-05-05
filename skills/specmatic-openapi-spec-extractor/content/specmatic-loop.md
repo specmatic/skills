@@ -37,6 +37,7 @@ Rules:
 - Do not stop after extraction unless the user explicitly asked for extraction-only output.
 - Do not wait for Docker confirmation before the first loop attempt.
 - Do not stop after `specmatic validate`. Validation is only a preflight check and does not test the live app.
+- Do not assume the SUT is already running. If the project has a normal local start command, start it on the host, wait for readiness on `localhost:<SUT_PORT>`, and then run `specmatic test` against `host.docker.internal:<SUT_PORT>`.
 - Run the Specmatic loop only through the shell/Docker commands documented in this skill.
 - Do not use Specmatic MCP tools or any alternate Specmatic integration when this skill is active.
 
@@ -49,10 +50,13 @@ Follow this sequence strictly:
 Execution rule:
 - `prepare Specmatic setup`, `run validate`, `run targeted tests`, and `final full run` mean executing the documented image-resolution, `docker run`, and shell commands from this skill.
 - `run validate` means preflight validation only. It must be followed by a real `specmatic test` attempt against the running SUT unless a documented blocker prevents that step.
+- `run validate` should be scoped to the generated `specmatic/` assets and `specmatic.yaml` for this workflow, not arbitrary unrelated example files elsewhere in the repo.
 - Do not replace those steps with Specmatic MCP calls.
 - Use `host.docker.internal` as the supported default hostname for the host-run SUT.
 - On Linux, add `--add-host host.docker.internal:host-gateway` to Specmatic `docker run` commands.
 - On Windows/macOS, do not add extra host mapping.
+- If `host.docker.internal` fails to resolve on macOS or Windows, rerun the same command with `--add-host host.docker.internal:host-gateway` before treating it as a workflow blocker.
+- When that fallback is needed, classify it as Docker environment drift, often caused by custom Docker daemon DNS settings, not as a project defect.
 
 ## Downstream Dependency Rule
 
@@ -160,3 +164,23 @@ After each batch, report:
 - `Failed (license-limited)` when applicable
 - `Remaining batches`
 - `Deferred batches`
+
+## Final Loop Reporting
+
+When a live Specmatic test attempt completes or stops early, the final user-facing summary must include:
+
+- `Tests run`
+- `Passed`
+- `Failed`
+- `Errors`
+- `Failed (license-limited)` when applicable
+- grouped failure reasons such as spec mismatch, missing examples, empty runtime state, downstream dependency unavailable, Docker environment issue, or license cap
+- which failures are fixable in the repo or test setup
+- which failures remain blocked by external runtime dependencies or environment drift
+- what could not be verified because artifacts were overwritten or incomplete, if that happened
+
+Rules:
+
+- Do not stop at a generic statement like "runtime blockers remain."
+- If the run is blocked and the user must do something next, include the exact `**Action Required:**` prompt in the same final summary.
+- If downstream dependencies or data seeding are the next blockers, say so plainly and distinguish them from spec-generation work.

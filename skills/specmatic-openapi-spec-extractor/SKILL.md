@@ -32,11 +32,16 @@ If this skill is selected, do all of the following:
 - After extraction succeeds, continue into the mandatory post-extraction workflow below. Do not stop after saving the first generated spec.
 - `specmatic validate` is only a preflight check for spec/example correctness. It is never the finish line for this skill.
 - Always prepare the final runnable contract-test assets for the user once extraction and refinement are complete, even if the live Docker-dependent loop cannot run yet.
+- Treat the host-run SUT as something the agent should start and verify when the project provides a runnable local command. Do not assume the app is already listening unless the user explicitly says it is.
 - Prefer source annotations/config first, overlay second, and direct edits to the extracted spec never.
 - Do not change application implementation behavior to improve the spec. Allowed code changes are limited to extraction-related annotations, comments, and non-behavioral config required by the extraction tooling.
 - Do not change method signatures, control flow, returned values, persistence logic, auth behavior, or any other runtime semantics unless the user explicitly asks for implementation changes.
 - When running Specmatic validation, examples checks, stubs, or contract tests, use only the shell/Docker commands documented by this skill. Do not use Specmatic MCP tools or any alternate Specmatic execution path while this skill is active.
+- Run `specmatic validate` against the generated Specmatic assets for this workflow only. Do not let unrelated specs or example files elsewhere in the repository block this loop unless the user explicitly asked for whole-repo validation.
 - If contract-test failures are caused by unavailable downstream HTTP dependencies, the agent must identify all required downstream dependencies for the current batch and attempt to stand up Specmatic stubs for each of them before classifying the failures as non-fixable runtime issues.
+- After every live Specmatic test attempt, the agent must report the observed test counts when available: total run, passed, failed, errors, and failed due to license limits when applicable.
+- If the loop stops with failures or blockers, the agent must summarize why the failures happened in grouped categories, what remains fixable in-repo, what is still blocked by environment or downstream dependencies, and what could not be fully resolved in this run.
+- If a prior run report has been overwritten or only partial artifacts remain, the agent must say that explicitly instead of pretending to know the missing breakdown.
 - If a later phase is blocked, explicitly say which phase is blocked and why.
 - If a later phase is blocked and the user must do something before the workflow can continue, prefix that user-facing message with `**Action Required:**`.
 - Do not silently behave like a generic OpenAPI extraction task. Follow this skill's workflow explicitly.
@@ -70,6 +75,9 @@ This skill should win over a generic extraction-only skill when:
 - Do not use `--network host` anywhere in this skill.
 - Linux-only runner rule: add `--add-host host.docker.internal:host-gateway` to Specmatic `docker run` commands so `host.docker.internal` resolves the same way it does on Docker Desktop.
 - Windows/macOS runner rule: run Docker without extra host mapping.
+- If `host.docker.internal` fails to resolve from a container on macOS or Windows, treat that as a Docker Desktop environment/configuration issue rather than an application bug.
+- In that case, retry the same Docker command with `--add-host host.docker.internal:host-gateway` before reporting a blocker.
+- A common cause is custom Docker daemon DNS configuration overriding Docker Desktop's built-in host alias resolution.
 - Containerized-SUT and Docker Compose networking are out of scope for this iteration.
 - Do not ask the user about Docker availability before attempting the documented Specmatic image-resolution, `docker run`, validation, or test commands from this skill.
 - Attempt the Specmatic feedback loop first.
@@ -105,7 +113,7 @@ Once the first spec has been extracted, the agent must execute these phases in o
    Allowed refinements: annotations, decorators, doc comments, extraction-tool config, and overlay updates.
    Disallowed refinements without explicit user approval: implementation changes, behavioral changes, signature changes, data model changes made only to shape the contract, or business-logic edits.
 6. Re-extract the spec after each meaningful refinement.
-7. Run `specmatic validate` only as a preflight check, then start the SUT and attempt the live Specmatic feedback loop using the documented image-resolution, `docker run`, and `specmatic test` commands from this skill.
+7. Run `specmatic validate` only as a preflight check against the generated Specmatic assets, then start the SUT if needed, verify it is listening on the chosen `SUT_PORT`, and attempt the live Specmatic feedback loop using the documented image-resolution, `docker run`, and `specmatic test` commands from this skill.
 8. If failures show that the SUT cannot reach one or more downstream HTTP dependencies, identify all required downstream dependencies for the current batch, stand up a Specmatic stub for each dependency on its expected host port, generate or update stub examples for each dependency, and rerun the relevant validation or test step.
 9. If a Docker command fails for a Docker-specific reason, stop and ask the user exactly: `**Action Required:** Please start the Docker engine, then confirm once it is running.`
 10. If no license is found, continue the loop with the built-in trial. If a Specmatic command fails because of a trial-license or enterprise-feature limit, report that those failures are license-related, include counts for tests run, passed, failed, and failed due to license limits, and ask the user exactly: `**Action Required:** Some Specmatic tests failed because no valid license was available. If you have a license, please share its path or add it under your home .specmatic directory.`
