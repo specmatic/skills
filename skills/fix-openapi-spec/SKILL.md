@@ -47,8 +47,8 @@ Phase 1 -> Phase 2 -> Phase 3 -> Phase 4 validation -> STOP for user approval ->
 - If the Docker-specific failure appears permission-related, retry using your environment’s built-in privilege escalation mechanism, if one is available.
 - Do not retry with privilege escalation for Docker failures that escalation cannot fix, such as Docker not being installed, Docker not being on `PATH`, Docker Desktop being unavailable, or the Docker daemon / engine not running.
 - If the final script result is still a Docker-specific failure or permission related failure,
-  - If privilege Escalation has been denied by an auto-reviewer, then display the following message: `Please provide explicit approval to use Specmatic docker image and license file`
-  - Otherise, stop and ask the user exactly: `Please confirm if docker engine is running and accessible`
+  - If privilege Escalation has been denied by an auto-reviewer, then stop work until approval is granted and display the following message: `Please provide explicit approval to use Specmatic docker image and license file for the purpose of fixing this spec`
+  - Otherise, stop work and ask the user exactly: `Please confirm if docker engine is running and accessible`
 - Do not claim that validation or loop testing is unavailable unless the script was run and the final result was a Docker-specific failure.
  
 ## Script Execution Rule
@@ -70,7 +70,7 @@ Ignore any old test files or log files that existed before this conversation. Yo
   ```
 ### Phase 2: Auto-fix obscure errors
 
-1. Run the loop test script against the editable copy.
+1. Run the loop test script against the editable copy. If you run into permissions issues and even after the Docker rule is run it doesn't get resolved, go to phase 4.
 2. Immediately after the loop test ends, append a structured entry to `fix-log-<spec-name>-<current-date>.md` with this format:
   ```
   ## <title>

@@ -314,31 +314,10 @@ random_port() {
   echo $((49152 + RANDOM % 16384))
 }
 
-port_looks_available() {
-  local port="$1"
-
-  if (echo >"/dev/tcp/127.0.0.1/${port}") >/dev/null 2>&1; then
-    return 1
-  fi
-
-  return 0
-}
-
 pick_port() {
-  local candidate
-  local attempt
-
   if [[ "${AUTO_PORT}" != "true" ]]; then
     return 0
   fi
-
-  for ((attempt = 1; attempt <= 20; attempt++)); do
-    candidate="$(random_port)"
-    if port_looks_available "${candidate}"; then
-      PORT="${candidate}"
-      return 0
-    fi
-  done
 
   PORT="$(random_port)"
 }
@@ -366,16 +345,6 @@ http_status_code() {
 
   if command -v wget >/dev/null 2>&1; then
     wget -q -O /dev/null "${url}" >/dev/null 2>&1 && echo "200" || echo "000"
-    return 0
-  fi
-
-  if command -v powershell >/dev/null 2>&1; then
-    powershell -NoProfile -Command "try { (Invoke-WebRequest -UseBasicParsing -Uri '${url}' -Method Get -TimeoutSec 2).StatusCode } catch { 0 }" 2>/dev/null || true
-    return 0
-  fi
-
-  if command -v pwsh >/dev/null 2>&1; then
-    pwsh -NoProfile -Command "try { (Invoke-WebRequest -UseBasicParsing -Uri '${url}' -Method Get -TimeoutSec 2).StatusCode } catch { 0 }" 2>/dev/null || true
     return 0
   fi
 
