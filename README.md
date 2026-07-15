@@ -6,6 +6,7 @@ It is intended for cases where you want an assistant to follow a structured work
 - extracting an OpenAPI specification from an existing API codebase
 - fixing OpenAPI specifications that break Specmatic validation, mocking, or contract tests
 - debugging Specmatic failures and separating concrete spec or app defects from likely Specmatic issues
+- generating runnable Backend, BFF, and Frontend sample projects that demonstrate Specmatic contract testing
 
 ## What Problems These Skills Solve
 
@@ -13,6 +14,8 @@ These skills are useful when:
 - your application already exists, but its OpenAPI or Swagger specification is missing, incomplete, or stale
 - your OpenAPI file looks valid, but Specmatic cannot mock it, validate it, or execute tests against it
 - a Specmatic workflow is failing, and it is unclear whether the root cause is the spec, the provider app, configuration, Docker/runtime setup, or Specmatic itself
+- you need a working sample for a particular language, framework, protocol, and Specmatic integration mode
+- an existing Specmatic sample needs contract, dependency, runtime, or configuration updates
 
 They are not meant for:
 - writing a brand-new API design from scratch
@@ -41,12 +44,20 @@ This skill is best for:
 
 ### `debug-specmatic-failures`
 
-Use this when a Specmatic workflow is failing, and you need to diagnosis the issue.
+Use this when a Specmatic workflow is failing, and you need to diagnose the issue.
 
 This skill is best for:
 - identifying the exact failing command, spec path, mode, and version
 - determining whether the problem is a concrete spec defect, provider bug, config issue, or Specmatic bug
 - stopping early once the failure is clearly a Specmatic limitation or contradiction
+
+### `generate-specmatic-sample`
+
+Use this when you want to generate a new Specmatic sample project an existing one.
+
+This skill can be used for creating Backend, BFF, or Frontend sample projects that leverage Specmatic for mocking or testing from an executable contract
+
+Provide the contract repository and spec path, application type, language, framework, integration mode, and destination path. The protocol is inferred from the contract.
 
 ## Installation
 
@@ -92,3 +103,25 @@ Sample prompts for each skill:
 - "Why is this Specmatic test failing?"
 - "Debug this Specmatic run and tell me whether the issue is in the spec, app, or Specmatic."
 - "Investigate this Specmatic error and tell me if it looks like a product bug."
+
+### `generate-specmatic-sample`
+
+- "Generate a Specmatic sample project from this OpenAPI contract."
+- "Create a Java Spring Boot backend sample using native Specmatic contract tests."
+- "Create a TypeScript BFF sample whose backend dependencies are mocked by Specmatic."
+
+For a non-interactive generation request, include all inputs in the prompt:
+
+```text
+Use generate-specmatic-sample in generate mode.
+
+Contract repo: https://github.com/specmatic/specmatic-order-contracts.git
+Spec path: io/specmatic/examples/store/openapi/api_order_v5.yaml
+Application type: backend
+Language: java
+Framework: spring-boot
+Specmatic integration mode: native
+Destination path: /tmp/my-sample
+
+Skip interactive questions because all inputs are provided, and report the test counts at each verification level.
+```
