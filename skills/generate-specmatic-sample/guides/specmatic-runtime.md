@@ -246,19 +246,6 @@ Generate the relevant Maven configuration in this form:
 </dependency>
 ```
 
-For host-run Maven tests, keep the checked-in `SUT_BASE_URL` default at
-`http://127.0.0.1:8080`. A Docker Compose or container-network command must
-explicitly override it with `SUT_BASE_URL=http://bff:8080`; do not make the
-Docker-only hostname the shared default. Document both paths in the generated
-README.
-
-Make the native test command start Spring Boot, wait until
-`http://127.0.0.1:8080` is reachable, execute the native Specmatic contract
-tests, propagate their result, and stop the app. A passing default Maven test
-phase or package build is not proof that the native contract tests ran. If the
-native test cannot reach Spring Boot or produces no Specmatic contract-test
-result, report verification as incomplete and do not mark the sample done.
-
 ## Contract test adapter requirements
 
 - Read host, port, base URL, broker, imports, examples, and timeout values from

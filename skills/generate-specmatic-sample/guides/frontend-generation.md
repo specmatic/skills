@@ -15,7 +15,7 @@ be verified against the executable contract referenced by `specmatic.yaml`.
   messages.
 - Contract consumption tests using a Specmatic mock/stub of the BFF contract.
 - Name frontend test orchestration for what it runs. Prefer a name such as
-  `run-consumer-api-tests.mjs` for application API tests against a Specmatic
+  `run-consumer-api-tests.mjs` for application API tests using a Specmatic
   mock. Reserve `run-contract-tests` for provider flows where Specmatic
   generates requests against a system under test.
 
