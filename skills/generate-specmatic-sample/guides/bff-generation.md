@@ -36,6 +36,9 @@ mock/stub started by Specmatic.
   matching Backend dependency contract (for example idempotency, auth,
   pagination). Do not hardcode names that the executable contracts do not
   declare.
+- When an optional `pageSize` is absent, use a default page size of `10`. When
+  it is supplied, use the supplied value; do not implicitly convert absence to
+  `0`. Generate tests for absent, supplied, and contract-valid boundary values.
 - BFF samples have no seed data.
 - Implement every endpoint the executable BFF contract declares, including
   monitor or polling endpoints such as `/monitor/{id}`. Do not filter a

@@ -121,11 +121,31 @@ same directory also contains the CTRF output for CI tooling.
 Always show commands for all three OS variants: Unix/macOS, Windows PowerShell,
 and Windows Command Prompt.
 
+For Python samples, use a project-local virtual environment by default so the
+sample does not depend on whether the base Python installation permits global
+package changes. Use the actual generated requirements file in these commands.
+For Unix/macOS:
+
+```shell
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/python -m pytest
+```
+
+For Windows PowerShell and Command Prompt:
+
+```shell
+py -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.venv\Scripts\python.exe -m pytest
+```
+
 Include a note about first-run timing: "First run may take 1-2 minutes as Specmatic clones the configured contract repository. Subsequent runs are fast (cached in `.specmatic/`)."
 
 Link to the specmatic.yaml file and explain it configures which contracts are tested.
 
-Include a "Test Modes" subsection explaining how to enable schema resiliency:
+For test-mode Backend and BFF provider samples, include a "Test Modes"
+subsection explaining how to enable schema resiliency:
 
 ```markdown
 ### Test Modes
@@ -147,6 +167,16 @@ specmatic:
     test:
       schemaResiliencyTests: none
 ```
+```
+
+For mock-only Frontend samples, replace "Test Modes" with:
+
+```markdown
+### Consumer Verification
+
+Specmatic starts a mock of the consumed API from the configured contract. The
+application's consumer API tests call this mock, verifying that the client sends
+contract-valid requests and handles contract-valid responses.
 ```
 
 ### 7. How It Works
@@ -204,10 +234,14 @@ Table of environment variables that can override defaults:
 | Environment Variable | Default | Description |
 |---------------------|---------|-------------|
 | SUT_PORT | 8080 | Application port |
-| SUT_BASE_URL | http://localhost:8080 | Base URL for Specmatic tests |
+| SUT_BASE_URL | <resolved-mode-specific-default> | Base URL for Specmatic tests |
 ```
 
 Include when the sample exposes configurable ports, URLs, or broker settings.
+For Java/Maven native samples, document the host-run default as
+`http://127.0.0.1:8080`. If Docker Compose or a container network uses
+`http://bff:8080`, document it as an explicit Docker override rather than the
+shared default.
 
 Place optional sections between "How It Works" and "Project Structure".
 

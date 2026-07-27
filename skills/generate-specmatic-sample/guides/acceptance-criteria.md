@@ -23,9 +23,10 @@ All checks apply inside the generated sample folder at `<provided-location>/<sam
   tests do not generate, copy, overwrite, or mutate another Specmatic YAML file,
   and the config is not relocated into build directories (e.g.
   `build/specmatic-runner/specmatic.yaml`)
-- [ ] The delivered `specmatic.yaml` ships with `schemaResiliencyTests: all`
+- [ ] Test-mode Backend and BFF samples ship with `schemaResiliencyTests: all`
   (schema resiliency ON), unless documented unresolvable contract-gap failures
-  force a lower level recorded in the manifest learnings
+  force a lower level recorded in the manifest learnings. Mock-only Frontend
+  samples omit `schemaResiliencyTests`.
 - [ ] Specmatic is configured to generate HTML and CTRF reports. The verified
   runtime report location is recorded in the manifest and used by the README;
   generated files may capture/upload, ignore, or link to that output, but must
@@ -59,6 +60,15 @@ All checks apply inside the generated sample folder at `<provided-location>/<sam
   artifact/API. Generated files must not reference `npm exec specmatic`, `npx
   specmatic`, `specmatic@`, `node_modules/specmatic/specmatic.jar`, or
   `specmatic/specmatic`.
+- [ ] JVM native samples do not directly declare OSS Specmatic dependencies
+  such as `io.specmatic:junit5-support`, `io.specmatic:specmatic-core`, or
+  `io.specmatic:specmatic-executable`. Transitive modules brought in by the
+  selected Enterprise artifact are not independently declared or versioned.
+- [ ] Java/Maven native samples start the application on a host-reachable
+  endpoint, wait for readiness, and produce a passing native Specmatic contract
+  test result. A passing default Maven test phase or package build without that
+  result is not sufficient for completion. Docker-only service hostnames are
+  supplied as explicit container-run overrides rather than host-run defaults.
 - [ ] `.specmatic-sample-manifest.json` records the exact Enterprise runtime
   artifact/version/source. A license initialization message alone is not
   accepted as proof of Enterprise runtime usage.
@@ -69,8 +79,8 @@ All checks apply inside the generated sample folder at `<provided-location>/<sam
   sections are present and in order, contract links point to the resolved
   executable specs, role-appropriate architecture assets are included when
   available, run commands cover Unix/macOS, Windows PowerShell, and Windows
-  Command Prompt, test modes are documented, and project structure matches the
-  generated files
+  Command Prompt, applicable test modes or mock-only consumer verification are
+  documented, and project structure matches the generated files
 - [ ] README-required assets, such as architecture GIFs copied from `assets/`,
   are included inside the sample folder and listed in
   `.specmatic-sample-manifest.json`
@@ -222,7 +232,7 @@ npm install && npm test
 ./mvnw test
 
 # Python
-pip install -r requirements.txt && pytest test -v -s
+python3 -m venv .venv && .venv/bin/python -m pip install -r requirements-dev.txt && .venv/bin/python -m pytest
 ```
 
 Single command, green output.

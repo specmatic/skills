@@ -412,7 +412,8 @@ For samples where Specmatic acts only as a stub/mock (`type: mock`) — such as
 frontend samples or consumer-side samples — skip the progressive levels. Run the
 test command once and verify all tests pass. The `schemaResiliencyTests` setting
 has no effect on stub mode because Specmatic is not generating requests; the
-app's own test suite determines the test count.
+app's own test suite determines the test count. Omit `schemaResiliencyTests`
+from mock-only sample configurations.
 
 **Level 1 — Examples only** (`schemaResiliencyTests: none`):
 Set `schemaResiliencyTests: none` in `specmatic.yaml` and run the test command.
@@ -481,9 +482,10 @@ at a third-party class, identify the conflicting transitive between the
 Specmatic library and the framework. Override it using the build tool's standard
 dependency override mechanism. This is a build fix, not a behavior fix.
 
-Schema resiliency ON (`all`) is the default shipped configuration. If Level 3
-passes fully (zero failures), ship the final `specmatic.yaml` with
-`schemaResiliencyTests: all` to deliver maximum test coverage out of the box.
+For test-mode provider samples, schema resiliency ON (`all`) is the default
+shipped configuration. If Level 3 passes fully (zero failures), ship the final
+`specmatic.yaml` with `schemaResiliencyTests: all` to deliver maximum test
+coverage out of the box.
 
 If Level 3 has unresolvable contract-gap failures only (see "Level 3 Known
 Patterns"), ship the highest level that passes cleanly (`positiveOnly`, or
