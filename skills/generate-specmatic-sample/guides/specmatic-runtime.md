@@ -9,9 +9,11 @@ schema and field syntax. Do not maintain or copy a local schema template here.
 ```
 enterprise_cli_version: 1.19.1
 enterprise_docker_tag: 1.19.1
+enterprise_native_jvm_version: 1.22.0
 ```
 
-Use these versions for all generated samples. Do not resolve "latest" dynamically.
+Use the version applicable to the selected integration mode. Do not resolve
+"latest" dynamically.
 
 ## Documentation-driven configuration
 
@@ -64,7 +66,9 @@ timeouts configurable through the documented template syntax. The generated app
 and the configuration must use the same environment-variable names. Use the
 root workflow defaults unless the resolved contract requires another value:
 
-- SUT HTTP base URL: `SUT_BASE_URL`, defaulting to `http://localhost:8080`.
+- SUT HTTP base URL: `SUT_BASE_URL`, defaulting to `http://127.0.0.1:8080` for
+  host-run `native` and `cli` modes. Do not use Docker service names such as
+  `bff` as host-run defaults.
 - Dependency HTTP mock URL: `STUB_BASE_URL`, defaulting to
   `http://localhost:8090`.
 - gRPC and Kafka host, port, broker, import-path, `protoc`, and timeout values:
@@ -107,11 +111,15 @@ for OpenAPI.
 
 ### Resiliency verification policy
 
-Use the documentation-supported `schemaResiliencyTests` setting during the
-existing `none` → `positiveOnly` → `all` verification workflow. Ship `all`
-unless an unresolvable contract gap is recorded in the manifest. Test counts
-must increase at each level; otherwise stop and diagnose the generated config
-and runtime combination.
+For test-mode provider samples (`type: test`), use the documentation-supported
+`schemaResiliencyTests` setting during the existing `none` → `positiveOnly` →
+`all` verification workflow. Ship `all` unless an unresolvable contract gap is
+recorded in the manifest. Test counts must increase at each level; otherwise
+stop and diagnose the generated config and runtime combination.
+
+For mock-only samples (`type: mock`), do not emit
+`specmatic.settings.test.schemaResiliencyTests`. The setting does not affect
+mock behavior because Specmatic is not generating tests against a provider.
 
 ## Documentation/runtime discrepancy policy
 
@@ -175,6 +183,68 @@ for the selected protocol. Keep the root config as the single source; start the
 app and dependencies, run the native contract tests, surface failures, and tear
 down every process. If no official native artifact exists, require `cli`,
 `docker-cli`, or `test-container` instead.
+
+For JVM native integration, directly declare only the documented
+`io.specmatic.enterprise:*` native artifact. Do not directly declare OSS
+Specmatic dependencies such as `io.specmatic:junit5-support`,
+`io.specmatic:specmatic-core`, or `io.specmatic:specmatic-executable`. OSS
+modules may appear transitively through the Enterprise artifact, but must not be
+independently declared or versioned. If the Enterprise artifact does not expose
+the required test API by itself, treat native mode as unsupported. After
+dependency resolution, distinguish direct dependencies from transitives when
+verifying this rule.
+
+#### Java/Maven native with Enterprise 1.22.0
+
+For Java/Maven OpenAPI samples using native mode, use
+`io.specmatic.enterprise:openapi-min:1.22.0` and apply these version-scoped
+dependency rules:
+
+- Set the Maven `kotlin.version` property to `2.3.0`. Do not pin Kotlin to
+  `1.3.x` or accept Spring Boot dependency management selecting `1.9.25`;
+  Enterprise 1.22.0 uses Kotlin 2.3.x APIs.
+- Exclude transitive `io.netty:netty-bom` and
+  `com.fasterxml.jackson:jackson-bom` from `openapi-min`; these are published as
+  BOM POMs and must not be resolved as JARs.
+- Exclude transitive `org.webjars.npm:jquery` from `openapi-min`, then directly
+  declare `org.webjars.npm:jquery:3.7.1` to avoid its obsolete transitive
+  `jsdom` version range.
+
+Generate the relevant Maven configuration in this form:
+
+```xml
+<properties>
+  <kotlin.version>2.3.0</kotlin.version>
+</properties>
+
+<dependency>
+  <groupId>io.specmatic.enterprise</groupId>
+  <artifactId>openapi-min</artifactId>
+  <version>1.22.0</version>
+  <scope>test</scope>
+  <exclusions>
+    <exclusion>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-bom</artifactId>
+    </exclusion>
+    <exclusion>
+      <groupId>com.fasterxml.jackson</groupId>
+      <artifactId>jackson-bom</artifactId>
+    </exclusion>
+    <exclusion>
+      <groupId>org.webjars.npm</groupId>
+      <artifactId>jquery</artifactId>
+    </exclusion>
+  </exclusions>
+</dependency>
+
+<dependency>
+  <groupId>org.webjars.npm</groupId>
+  <artifactId>jquery</artifactId>
+  <version>3.7.1</version>
+  <scope>test</scope>
+</dependency>
+```
 
 ## Contract test adapter requirements
 
