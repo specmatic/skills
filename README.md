@@ -1,6 +1,6 @@
 ## Specmatic Skills
 
-This repository packages reusable AI assistant skills for working with Specmatic and OpenAPI.
+This repository packages reusable AI assistant skills for working with Specmatic and API specifications.
 
 It is intended for cases where you want an assistant to follow a structured workflow for:
 - extracting an OpenAPI specification from an existing API codebase
@@ -53,9 +53,7 @@ This skill is best for:
 
 ### `generate-specmatic-sample`
 
-Use this when you want to generate a new Specmatic sample project an existing one.
-
-This skill can be used for creating Backend, BFF, or Frontend sample projects that leverage Specmatic for mocking or testing from an executable contract
+Generate or maintain self-contained Backend, BFF, and Frontend samples from an executable contract. The skill supports REST/OpenAPI, AsyncAPI, gRPC, GraphQL, and SOAP; mocks external dependencies by default; and integrates Specmatic through CLI, Docker, Testcontainers, or native test libraries. A sample is complete only after its build and Specmatic contract tests pass.
 
 Provide the contract repository and spec path, application type, language, framework, integration mode, and destination path. The protocol is inferred from the contract.
 
@@ -109,6 +107,8 @@ Sample prompts for each skill:
 - "Generate a Specmatic sample project from this OpenAPI contract."
 - "Create a Java Spring Boot backend sample using native Specmatic contract tests."
 - "Create a TypeScript BFF sample whose backend dependencies are mocked by Specmatic."
+- "Create a gRPC backend sample from this Protobuf contract and verify it with Specmatic."
+- "Update this existing sample for the latest contract and Specmatic runtime, preserving its customizations."
 
 For a non-interactive generation request, include all inputs in the prompt:
 
