@@ -7,9 +7,9 @@ schema and field syntax. Do not maintain or copy a local schema template here.
 ## Pinned runtime versions
 
 ```
-enterprise_cli_version: 1.25.0
-enterprise_docker_tag: 1.25.0
-enterprise_native_jvm_version: 1.25.0
+enterprise_cli_version: 1.27.0
+enterprise_docker_tag: 1.27.0
+enterprise_native_jvm_version: 1.27.0
 ```
 
 Use the version applicable to the selected integration mode. Do not resolve
